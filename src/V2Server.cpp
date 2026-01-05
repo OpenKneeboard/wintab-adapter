@@ -1,0 +1,266 @@
+// Copyright 2026 Fred Emmott <fred@fredemmott.com>
+// SPDX-License-Identifier: MIT
+#include "V2Server.hpp"
+
+#include <afunix.h>
+#include <shlobj.h>
+#include <wil/filesystem.h>
+#include <wil/result.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+#include <format>
+#include <fstream>
+#include <functional>
+#include <iostream>
+
+#include <OTDIPC/DebugMessage.hpp>
+#include <OTDIPC/Ping.hpp>
+
+#pragma comment(lib, "ws2_32.lib")
+
+namespace {
+// Helper to get LocalAppData/otd-ipc/servers/v2
+std::filesystem::path GetDiscoveryDir() {
+  wil::unique_cotaskmem_string localAppData;
+  if (SUCCEEDED(SHGetKnownFolderPath(
+        FOLDERID_LocalAppData, 0, nullptr, &localAppData))) {
+    std::filesystem::path path(localAppData.get());
+    return path / "otd-ipc" / "servers" / "v2";
+  }
+  throw std::runtime_error("Failed to resolve %LOCALAPPDATA%");
+}
+
+template <std::derived_from<OTDIPC::Messages::Header> T>
+void InitHeader(T& msg, uint32_t tabletId, std::size_t size = sizeof(T)) {
+  msg.messageType = T::MESSAGE_TYPE;
+  msg.size = static_cast<uint32_t>(size);
+  msg.nonPersistentTabletId = tabletId;
+}
+}// namespace
+
+V2Server::V2Server(Config config, const DefaultBehavior defaultBehavior)
+  : mConfig(std::move(config)), mDefaultBehavior(defaultBehavior) {
+  // Initialize WinSock
+  WSADATA wsaData;
+  int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (result != 0) {
+    THROW_HR(HRESULT_FROM_WIN32(result));
+  }
+}
+
+V2Server::~V2Server() {
+  Stop();
+  WSACleanup();
+}
+
+void V2Server::Start() {
+  // 1. Setup Socket
+  mListenSocket.reset(socket(AF_UNIX, SOCK_STREAM, 0));
+  if (!mListenSocket) {
+    THROW_LAST_ERROR();
+  }
+
+  // Delete existing socket file if it exists (Unix socket requirement)
+  std::error_code ec;
+  if (std::filesystem::exists(mConfig.socketPath, ec)) {
+    std::filesystem::remove(mConfig.socketPath, ec);
+  }
+
+  // Ensure parent directory exists for socket
+  std::filesystem::create_directories(mConfig.socketPath.parent_path(), ec);
+  // `exists()` is unusable on Unix sockets on Windows, so unconditionally remove
+  // and ignore error
+  // https://github.com/microsoft/STL/issues/4077
+  std::filesystem::remove(mConfig.socketPath, ec);
+
+  sockaddr_un addr = {};
+  addr.sun_family = AF_UNIX;
+
+  // Copy path to sun_path (max 108 chars usually)
+  std::string pathStr = mConfig.socketPath.string();
+  if (pathStr.length() >= sizeof(addr.sun_path)) {
+    throw std::runtime_error("Socket path is too long for AF_UNIX");
+  }
+  strncpy_s(addr.sun_path, pathStr.c_str(), _TRUNCATE);
+
+
+  if (
+    bind(mListenSocket.get(), (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
+    THROW_LAST_ERROR();
+  }
+
+  if (listen(mListenSocket.get(), 1) == SOCKET_ERROR) {
+    THROW_LAST_ERROR();
+  }
+
+  PublishDiscovery();
+
+  mAcceptThread = std::jthread(std::bind_front(&V2Server::AcceptLoop, this));
+  mPingThread = std::jthread(std::bind_front(&V2Server::PingLoop, this));
+}
+
+void V2Server::PingLoop(const std::stop_token st) {
+  while (!st.stop_requested()) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    if (st.stop_requested()) {
+      break;
+    }
+
+    if (!mClientSocket) {
+      continue;
+    }
+
+    static uint64_t seq = 0;
+    OTDIPC::Messages::Ping ping = {};
+    InitHeader(ping, 0);
+    ping.sequenceNumber = ++seq;
+    Send(ping);
+  }
+}
+
+void V2Server::Stop() {
+  mPingThread = {};
+  mAcceptThread = {};
+}
+
+void V2Server::AcceptLoop(const std::stop_token st) {
+  while (!st.stop_requested()) {
+    AcceptOnce(st);
+  }
+  mListenSocket.reset();
+}
+
+void V2Server::AcceptOnce(const std::stop_token st) {
+  // Block waiting for a client
+  wil::unique_socket client(accept(mListenSocket.get(), nullptr, nullptr));
+
+  if (!client) {
+    // accept failed (likely Stop() called and socket closed)
+    return;
+  }
+
+  mClientSocket = std::move(client);
+
+  // HANDSHAKE PHASE
+
+  // 1. Send DebugMessage (Identity)
+  const std::string identity = std::format(
+    "OTD-IPC '{}' : {} / {}",
+    mConfig.humanName,
+    mConfig.implementationId,
+    mConfig.semVer);
+  SendDebugMessage(identity);
+
+  // 2. Send DeviceInfo if present
+  if (mDevice.has_value()) {
+    Send(*mDevice);
+  }
+
+  // OPERATIONAL PHASE
+  // The server mostly PUSHES. We don't necessarily need to read from the
+  // client, but we should detect disconnects. We can block on a recv() here to
+  // detect when the client closes the connection. The client isn't expected to
+  // send anything, so any read > 0 is weird (protocol violation), and read == 0
+  // means disconnect.
+
+  char buffer[1];
+  while (!st.stop_requested()) {
+    int result = recv(mClientSocket.get(), buffer, 1, 0);
+    if (result <= 0) {
+      // 0 = Graceful disconnect, -1 = Error
+      break;
+    }
+    // If client sends data, we ignore it per protocol, but keep reading to
+    // detect disconnect.
+  }
+  mClientSocket.reset();
+}
+
+void V2Server::PublishDiscovery() {
+  const auto root = GetDiscoveryDir();
+  std::filesystem::create_directories(root / "available");
+
+  // 1. Write Metadata
+  const auto metaPath
+    = root / "available" / std::format("{}.txt", mConfig.implementationId);
+  std::ofstream meta(metaPath);
+
+  std::string socketPathGeneric
+    = absolute(mConfig.socketPath).generic_string();
+
+  meta << "ID=" << mConfig.implementationId << "\n";
+  meta << "NAME=" << mConfig.humanName << "\n";
+  meta << "SEMVER=" << mConfig.semVer << "\n";
+  meta << "DEBUG_VERSION=" << mConfig.debugVersion << "\n";
+  meta << "HOMEPAGE=" << mConfig.homepageUrl << "\n";
+  meta << "SOCKET=" << socketPathGeneric << "\n";
+  meta.close();
+
+  // 2. Handle Default
+  EnsureDefaultExists();
+}
+
+void V2Server::EnsureDefaultExists() {
+  if (mDefaultBehavior == DefaultBehavior::DoNotSet)
+    return;
+
+  const auto root = GetDiscoveryDir();
+  const auto defaultPath = root / "default.txt";
+
+  if (
+    mDefaultBehavior == DefaultBehavior::AlwaysSet
+    || !std::filesystem::exists(defaultPath)) {
+    std::ofstream def(defaultPath);
+    def << mConfig.implementationId;
+  }
+}
+
+bool V2Server::SendRaw(const void* data, size_t size) {
+  if (!mClientSocket)
+    return false;
+
+  const int result = send(
+    mClientSocket.get(),
+    static_cast<const char*>(data),
+    static_cast<int>(size),
+    0);
+  if (result == SOCKET_ERROR) {
+    mClientSocket.reset();
+    return false;
+  }
+  return true;
+}
+
+void V2Server::SetDevice(const OTDIPC::Messages::DeviceInfo& device) {
+  mDevice = device;
+  InitHeader(*mDevice, device.nonPersistentTabletId);
+  ;
+
+  Send(*mDevice);
+}
+
+void V2Server::SetState(const OTDIPC::Messages::State& state) {
+  // Copy state to modify header
+  OTDIPC::Messages::State msg = state;
+  InitHeader(msg, mDevice->nonPersistentTabletId);
+
+  Send(msg);
+}
+
+void V2Server::SendDebugMessage(std::string_view message) {
+  // Calculate total size: Header + Message Body
+  size_t totalSize = sizeof(OTDIPC::Messages::Header) + message.size();
+
+  std::vector<char> buffer(totalSize);
+  InitHeader(
+    *reinterpret_cast<OTDIPC::Messages::DebugMessage*>(buffer.data()), 0);
+
+  // Copy string data immediately after header
+  std::memcpy(
+    buffer.data() + sizeof(OTDIPC::Messages::Header),
+    message.data(),
+    message.size());
+
+  SendRaw(buffer.data(), totalSize);
+}

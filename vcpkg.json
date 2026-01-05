@@ -1,0 +1,16 @@
+{
+  "license": "MIT",
+  "supports": "windows",
+  "builtin-baseline": "84bab45d415d22042bd0b9081aea57f362da3f35",
+  "dependencies": [
+    "magic-args",
+    "magic-enum",
+    "wil"
+  ],
+  "overrides": [
+    {
+      "name": "magic-args",
+      "version": "2025-12-31"
+    }
+  ]
+}
