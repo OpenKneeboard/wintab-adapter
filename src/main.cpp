@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 #include <magic_args/magic_args.hpp>
+
 #include "V2Server.hpp"
+#include "WintabTablet.hpp"
 
 // clang-format off
 #include <Windows.h>
@@ -28,6 +30,65 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD /*dwCtrlType*/) {
   return TRUE;
 }
 
+
+LRESULT WintabWndproc(
+  HWND hwnd,
+  UINT msg,
+  WPARAM wParam,
+  LPARAM lParam
+) {
+  if (WintabTablet::ProcessMessage(hwnd, msg, wParam, lParam)) {
+    return 0;
+  }
+  return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+auto CreateWintabWindow() {
+  const auto instance = static_cast<HINSTANCE>(GetModuleHandle(nullptr));
+  WNDCLASSEXW wc {sizeof(wc)};
+  wc.lpfnWndProc = &WintabWndproc;
+  wc.hInstance = instance,
+  wc.lpszClassName = L"OpenKneeboard-WinTab-Adapter";
+
+  RegisterClassExW(&wc);
+  return wil::unique_hwnd {CreateWindowEx(
+    0,
+    wc.lpszClassName,
+    nullptr,
+    0,
+    0,
+    0,
+    0,
+    0,
+    HWND_MESSAGE,
+    nullptr,
+    instance,
+    nullptr)};
+}
+
+class DeviceLogger final : public IHandler {
+public:
+  constexpr DeviceLogger() = default;
+  constexpr DeviceLogger(IHandler* next) : mNext { next } {}
+
+  ~DeviceLogger() final = default;
+
+  void SetDevice(const OTDIPC::Messages::DeviceInfo& device) override {
+    std::println("Got device `{}` with persistent ID `{}`", device.GetName(), device.GetPersistentId());
+    if (mNext) {
+      mNext->SetDevice(device);
+    }
+  }
+
+  void SetState(const OTDIPC::Messages::State& state) override {
+    if (mNext) {
+      mNext->SetState(state);
+    }
+  }
+private:
+  IHandler* mNext { nullptr };
+};
+
 }// namespace
 
 struct Args {
@@ -37,6 +98,10 @@ struct Args {
 };
 
 MAGIC_ARGS_MAIN(Args&& args) {
+  setvbuf(stdout, nullptr, _IONBF, 0);
+  gExitEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
+  SetConsoleCtrlHandler(&ConsoleCtrlHandler, TRUE);
+
   const V2Server::Config config {
     .implementationId = "com.openkneeboard.wintab-adapter",
     .humanName = "OpenKneeboard WinTab Adapter",
@@ -53,10 +118,29 @@ MAGIC_ARGS_MAIN(Args&& args) {
 
   server.Start();
 
-  gExitEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
-  SetConsoleCtrlHandler(&ConsoleCtrlHandler, TRUE);
+  auto handler = DeviceLogger { &server };
 
-  std::ignore = gExitEvent.wait();
+  const auto window = CreateWintabWindow();
+  const auto wintab = new WintabTablet(window.get(), &handler);
+
+  const std::array events { static_cast<HANDLE>(gExitEvent.get()) };
+  while (true) {
+    const auto InputResult = WAIT_OBJECT_0 + events.size();
+    const auto result = MsgWaitForMultipleObjectsEx(
+      static_cast<DWORD>(events.size()),
+      events.data(),
+      INFINITE,
+      QS_ALLINPUT,
+      MWMO_INPUTAVAILABLE);
+    if (result != InputResult) {
+      break;
+    }
+    MSG msg {};
+    while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
+      TranslateMessage(&msg);
+      DispatchMessageW(&msg);
+    }
+  }
 
   return EXIT_SUCCESS;
 }

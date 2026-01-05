@@ -69,9 +69,8 @@ void V2Server::Start() {
 
   // Ensure parent directory exists for socket
   std::filesystem::create_directories(mConfig.socketPath.parent_path(), ec);
-  // `exists()` is unusable on Unix sockets on Windows, so unconditionally remove
-  // and ignore error
-  // https://github.com/microsoft/STL/issues/4077
+  // `exists()` is unusable on Unix sockets on Windows, so unconditionally
+  // remove and ignore error https://github.com/microsoft/STL/issues/4077
   std::filesystem::remove(mConfig.socketPath, ec);
 
   sockaddr_un addr = {};
@@ -83,7 +82,6 @@ void V2Server::Start() {
     throw std::runtime_error("Socket path is too long for AF_UNIX");
   }
   strncpy_s(addr.sun_path, pathStr.c_str(), _TRUNCATE);
-
 
   if (
     bind(mListenSocket.get(), (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
@@ -186,8 +184,7 @@ void V2Server::PublishDiscovery() {
     = root / "available" / std::format("{}.txt", mConfig.implementationId);
   std::ofstream meta(metaPath);
 
-  std::string socketPathGeneric
-    = absolute(mConfig.socketPath).generic_string();
+  std::string socketPathGeneric = absolute(mConfig.socketPath).generic_string();
 
   meta << "ID=" << mConfig.implementationId << "\n";
   meta << "NAME=" << mConfig.humanName << "\n";
@@ -216,13 +213,15 @@ void V2Server::EnsureDefaultExists() {
   }
 }
 
-bool V2Server::SendRaw(const void* data, size_t size) {
+bool V2Server::SendRaw(const OTDIPC::Messages::Header* data, size_t size) {
+  if (data->size != size)
+    throw std::runtime_error("Header size mismatch");
   if (!mClientSocket)
     return false;
 
   const int result = send(
     mClientSocket.get(),
-    static_cast<const char*>(data),
+    reinterpret_cast<const char*>(data),
     static_cast<int>(size),
     0);
   if (result == SOCKET_ERROR) {
@@ -250,11 +249,11 @@ void V2Server::SetState(const OTDIPC::Messages::State& state) {
 
 void V2Server::SendDebugMessage(std::string_view message) {
   // Calculate total size: Header + Message Body
-  size_t totalSize = sizeof(OTDIPC::Messages::Header) + message.size();
+  const size_t totalSize = sizeof(OTDIPC::Messages::Header) + message.size();
 
   std::vector<char> buffer(totalSize);
   InitHeader(
-    *reinterpret_cast<OTDIPC::Messages::DebugMessage*>(buffer.data()), 0);
+    *reinterpret_cast<OTDIPC::Messages::DebugMessage*>(buffer.data()), 0, totalSize);
 
   // Copy string data immediately after header
   std::memcpy(
@@ -262,5 +261,7 @@ void V2Server::SendDebugMessage(std::string_view message) {
     message.data(),
     message.size());
 
-  SendRaw(buffer.data(), totalSize);
+  SendRaw(
+    reinterpret_cast<const OTDIPC::Messages::Header*>(buffer.data()),
+    totalSize);
 }

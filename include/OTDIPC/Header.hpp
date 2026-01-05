@@ -7,6 +7,9 @@
 
 #include "MessageType.hpp"
 
+#include <cstddef>
+#include <cinttypes>
+
 namespace OTDIPC::inline V2::Messages {
   struct Header {
     MessageType messageType;

@@ -1,4 +1,9 @@
-add_executable(main main.cpp V2Server.cpp V2Server.hpp)
+add_executable(
+  main
+  main.cpp
+  V2Server.cpp V2Server.hpp
+  WintabTablet.cpp WintabTablet.hpp
+)
 set_target_properties(main PROPERTIES OUTPUT_NAME wintab-adapter)
 
 # magic_args currently has an implicit dependency on this

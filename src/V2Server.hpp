@@ -56,7 +56,7 @@ class V2Server final : public IHandler {
   void AcceptOnce(std::stop_token);
   void PingLoop(std::stop_token);
 
-  bool SendRaw(const void* data, size_t size);
+  bool SendRaw(const OTDIPC::Messages::Header* data, size_t size);
   template <class T>
     requires(!std::is_pointer_v<T>)
   bool Send(const T& data) {
