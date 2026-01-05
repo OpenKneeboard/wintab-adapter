@@ -19,7 +19,7 @@ Manufacturers would need to improve their drivers; however, if this is a use-cas
 
 That said, a wintab driver should function with the code as-is if they provide:
 
-- a distinct context handle (`HCTX`) for the current process - some drivers use the same `HCTX` for all applications
+- a distinct context handle (`HCTX`) for the current process - some drivers use the same `HCTX` for all applications. This is NOT sufficient.
 - `WM_CTXOVERLAP` messages that:
   - is sent with the correct `wParam` for the the current process
   - is sent when the process becomes inactive, with a *different* `wParam`
