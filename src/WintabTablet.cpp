@@ -20,6 +20,38 @@
 // clang-format on
 // NOLINTEND(cppcoreguidelines-macro-to-enum)
 
+namespace {
+WintabTablet* gInstance {nullptr};
+
+std::string to_utf8(const std::wstring_view w) {
+  if (w.empty()) {
+    return {};
+  }
+
+  const auto convert = [w](char* buffer, const std::size_t bufferSize) {
+    return static_cast<std::size_t>(WideCharToMultiByte(
+      CP_UTF8,
+      0,
+      w.data(),
+      static_cast<DWORD>(w.size()),
+      buffer,
+      bufferSize,
+      nullptr,
+      nullptr));
+  };
+  const auto size = convert(nullptr, 0);
+  std::string result;
+  result.resize_and_overwrite(size, convert);
+  return result;
+}
+template <std::size_t N>
+void to_buffer(char (&dest)[N], const std::string_view src) {
+  std::ranges::fill(dest, '\0');
+  std::ranges::copy_n(src.begin(), std::min(src.size(), N), dest);
+}
+
+}// namespace
+
 #define WINTAB_FUNCTIONS \
   IT(WTInfoW) \
   IT(WTOpenW) \
@@ -54,41 +86,16 @@ class WintabTablet::LibWintab {
   LibWintab& operator=(const LibWintab&) = delete;
   LibWintab& operator=(LibWintab&&) = delete;
 
+  std::string GetInfoString(UINT wCategory, UINT nIndex) const {
+    std::wstring wide;
+    wide.resize(this->WTInfoW(wCategory, nIndex, nullptr) / sizeof(wchar_t));
+    const auto actualSize = this->WTInfoW(wCategory, nIndex, wide.data()) / sizeof(wchar_t);
+    return to_utf8({wide.data(), actualSize - 1});
+  }
+
  private:
   wil::unique_hmodule mWintab = 0;
 };
-
-namespace {
-WintabTablet* gInstance {nullptr};
-
-std::string to_utf8(const std::wstring_view w) {
-  const auto convert = [w](char* buffer, const std::size_t bufferSize) {
-    return static_cast<std::size_t>(WideCharToMultiByte(
-      CP_UTF8,
-      0,
-      w.data(),
-      static_cast<DWORD>(w.size()),
-      buffer,
-      bufferSize,
-      nullptr,
-      nullptr));
-  };
-  const auto size = convert(nullptr, 0);
-  std::string result;
-  result.resize_and_overwrite(size, convert);
-  return result;
-}
-template <std::size_t N>
-void to_buffer(char (&dest)[N], const std::string_view src) {
-  std::ranges::fill(dest, '\0');
-  std::ranges::copy_n(src.begin(), std::min(src.size(), N), dest);
-}
-
-template <std::size_t N>
-void to_utf8_buffer(char (&dest)[N], const std::wstring_view src) {
-  to_buffer(dest, to_utf8(src));
-}
-}// namespace
 
 WintabTablet::WintabTablet(HWND window, IHandler* handler)
   : mWindow(window), mHandler(handler), mWintab(new LibWintab()) {
@@ -116,7 +123,7 @@ void WintabTablet::ConnectToTablet() {
     return;
   }
 
-  constexpr std::wstring_view contextName {L"OpenKneeboard"};
+  constexpr std::wstring_view contextName {L"OTDIPC-WinTab-Adapter"};
 
   LOGCONTEXTW logicalContext {};
   mWintab->WTInfoW(WTI_DEFCONTEXT, 0, &logicalContext);
@@ -179,28 +186,24 @@ void WintabTablet::ConnectToTablet() {
   mDeviceInfo.maxY = static_cast<float>(-logicalContext.lcOutExtY);
   mDeviceInfo.maxPressure = static_cast<uint32_t>(axis.axMax);
 
-  // Populate name
-  {
-    std::wstring wide;
-    wide.resize(
-      mWintab->WTInfoW(WTI_DEVICES, DVC_NAME, nullptr) / sizeof(wchar_t));
-    const auto actualSize
-      = mWintab->WTInfoW(WTI_DEVICES, DVC_NAME, wide.data());
-    to_utf8_buffer(mDeviceInfo.name, {wide.data(), actualSize - 1});
-  }
+  to_buffer(mDeviceInfo.name, mWintab->GetInfoString(WTI_DEVICES, DVC_NAME));
 
   // Populate ID
-  {
-    std::wstring wide;
-    wide.resize(
-      mWintab->WTInfoW(WTI_DEVICES, DVC_PNPID, nullptr) / sizeof(wchar_t));
-    const auto actualSize
-      = mWintab->WTInfoW(WTI_DEVICES, DVC_PNPID, wide.data());
+  if (const auto pnpId = mWintab->GetInfoString(WTI_DEVICES, DVC_PNPID);
+      !pnpId.empty()) {
     std::format_to_n(
       mDeviceInfo.persistentId,
       std::size(mDeviceInfo.persistentId),
-      "wintab:{}",
-      to_utf8({wide.data(), actualSize - 1}));
+      "wintab-pnpid:{}",
+      pnpId);
+  } else if (const auto interfaceId
+             = mWintab->GetInfoString(WTI_INTERFACE, IFC_WINTABID);
+             !interfaceId.empty()) {
+    std::format_to_n(
+      mDeviceInfo.persistentId,
+      std::size(mDeviceInfo.persistentId),
+      "wintab-id:{}",
+      interfaceId);
   }
 
   mHandler->SetDevice(mDeviceInfo);
