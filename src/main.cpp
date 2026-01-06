@@ -97,7 +97,7 @@ struct Args {
   };
 };
 
-MAGIC_ARGS_MAIN(Args&& args) {
+MAGIC_ARGS_MAIN(Args&& args) try {
   setvbuf(stdout, nullptr, _IONBF, 0);
   gExitEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
   SetConsoleCtrlHandler(&ConsoleCtrlHandler, TRUE);
@@ -143,4 +143,7 @@ MAGIC_ARGS_MAIN(Args&& args) {
   }
 
   return EXIT_SUCCESS;
+} catch (const std::exception& e) {
+  std::println(stderr, "Error: {}", e.what());
+  return EXIT_FAILURE;
 }
