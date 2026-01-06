@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <magic_args/magic_args.hpp>
+#include <magic_enum/magic_enum.hpp>
 
 #include "V2Server.hpp"
 #include "WintabTablet.hpp"
@@ -30,13 +31,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD /*dwCtrlType*/) {
   return TRUE;
 }
 
-
-LRESULT WintabWndproc(
-  HWND hwnd,
-  UINT msg,
-  WPARAM wParam,
-  LPARAM lParam
-) {
+LRESULT WintabWndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   if (WintabTablet::ProcessMessage(hwnd, msg, wParam, lParam)) {
     return 0;
   }
@@ -47,8 +42,7 @@ auto CreateWintabWindow() {
   const auto instance = static_cast<HINSTANCE>(GetModuleHandle(nullptr));
   WNDCLASSEXW wc {sizeof(wc)};
   wc.lpfnWndProc = &WintabWndproc;
-  wc.hInstance = instance,
-  wc.lpszClassName = L"OpenKneeboard-WinTab-Adapter";
+  wc.hInstance = instance, wc.lpszClassName = L"OpenKneeboard-WinTab-Adapter";
 
   RegisterClassExW(&wc);
   return wil::unique_hwnd {CreateWindowEx(
@@ -67,14 +61,18 @@ auto CreateWintabWindow() {
 }
 
 class DeviceLogger final : public IHandler {
-public:
+ public:
   constexpr DeviceLogger() = default;
-  constexpr DeviceLogger(IHandler* next) : mNext { next } {}
+  constexpr DeviceLogger(IHandler* next) : mNext {next} {
+  }
 
   ~DeviceLogger() final = default;
 
   void SetDevice(const OTDIPC::Messages::DeviceInfo& device) override {
-    std::println("Got device `{}` with persistent ID `{}`", device.GetName(), device.GetPersistentId());
+    std::println(
+      "Got device `{}` with persistent ID `{}`",
+      device.GetName(),
+      device.GetPersistentId());
     if (mNext) {
       mNext->SetDevice(device);
     }
@@ -85,8 +83,9 @@ public:
       mNext->SetState(state);
     }
   }
-private:
-  IHandler* mNext { nullptr };
+
+ private:
+  IHandler* mNext {nullptr};
 };
 
 }// namespace
@@ -95,6 +94,8 @@ struct Args {
   magic_args::flag mOverwriteDefault {
     .help = "Overwrite the current default OTD-IPC v2 implementation, if any",
   };
+
+  std::optional<WintabTablet::InjectableBuggyDriver> mHijackBuggyDriver;
 };
 
 MAGIC_ARGS_MAIN(Args&& args) try {
@@ -118,12 +119,13 @@ MAGIC_ARGS_MAIN(Args&& args) try {
 
   server.Start();
 
-  auto handler = DeviceLogger { &server };
+  auto handler = DeviceLogger {&server};
 
   const auto window = CreateWintabWindow();
-  const auto wintab = new WintabTablet(window.get(), &handler);
+  const auto wintab
+    = new WintabTablet(window.get(), &handler, args.mHijackBuggyDriver);
 
-  const std::array events { static_cast<HANDLE>(gExitEvent.get()) };
+  const std::array events {static_cast<HANDLE>(gExitEvent.get())};
   while (true) {
     const auto InputResult = WAIT_OBJECT_0 + events.size();
     const auto result = MsgWaitForMultipleObjectsEx(

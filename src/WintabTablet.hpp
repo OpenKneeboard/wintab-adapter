@@ -9,28 +9,38 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 
 struct HCTX__;
 
 class WintabTablet final {
  public:
+  enum class InjectableBuggyDriver {
+    HuionTabletCore,
+  };
+
   WintabTablet() = delete;
-  WintabTablet(HWND window, IHandler* handler);
+  WintabTablet(
+    HWND window,
+    IHandler* handler,
+    std::optional<InjectableBuggyDriver>);
   ~WintabTablet();
 
   [[nodiscard]]
-  static bool ProcessMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
-private:
+  static bool
+  ProcessMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
+
+ private:
   class LibWintab;
 
-  HWND mWindow { nullptr };
+  HWND mWindow {nullptr};
   ForegroundOverride mForegroundOverride;
-  IHandler* mHandler {nullptr };
+  IHandler* mHandler {nullptr};
   std::unique_ptr<LibWintab> mWintab;
-  HCTX__* mContext { nullptr };
+  HCTX__* mContext {nullptr};
 
-  std::uint32_t mNextTabletID { 1 };
+  std::uint32_t mNextTabletID {1};
 
   OTDIPC::Messages::DeviceInfo mDeviceInfo {};
   OTDIPC::Messages::State mState {};
@@ -42,5 +52,4 @@ private:
   static bool CanProcessMessage(UINT message);
   [[nodiscard]]
   bool ProcessMessageImpl(UINT message, WPARAM wParam, LPARAM lParam);
-
 };

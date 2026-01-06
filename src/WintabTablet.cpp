@@ -99,7 +99,9 @@ class WintabTablet::LibWintab {
   wil::unique_hmodule mWintab = 0;
 };
 
-WintabTablet::WintabTablet(HWND window, IHandler* handler)
+WintabTablet::WintabTablet(HWND window, IHandler* handler,
+  const std::optional<InjectableBuggyDriver> injectInto
+  )
   : mWindow(window),
     mHandler(handler),
     mWintab(new LibWintab()),
@@ -113,7 +115,15 @@ WintabTablet::WintabTablet(HWND window, IHandler* handler)
 
   gInstance = this;
 
-  InjectDllByExecutableFileName(L"HuionTabletCore.exe", absolute(std::filesystem::path{"ForegroundOverrideDll.dll"} ));
+  if (injectInto) {
+    using enum InjectableBuggyDriver;
+    const auto dll = absolute(std::filesystem::path{"ForegroundOverrideDll.dll"} );
+    switch (*injectInto) {
+      case HuionTabletCore:
+        InjectDllByExecutableFileName(L"HuionTabletCore.exe", dll);
+        break;
+    }
+  }
 
   ConnectToTablet();
 }
