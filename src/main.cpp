@@ -31,7 +31,7 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD /*dwCtrlType*/) {
   return TRUE;
 }
 
-LRESULT WintabWndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK WintabWndproc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   if (WintabTablet::ProcessMessage(hwnd, msg, wParam, lParam)) {
     return 0;
   }
