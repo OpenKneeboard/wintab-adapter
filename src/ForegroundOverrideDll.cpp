@@ -9,6 +9,10 @@
 #include <format>
 
 namespace {
+HWND GetOverride() {
+  static ForegroundOverride override;
+  return override.Get();
+}
 
 template <class... Args>
 void dprint(std::format_string<Args...> fmt, Args&&... args) {
@@ -19,31 +23,7 @@ void dprint(std::format_string<Args...> fmt, Args&&... args) {
 
 decltype(&GetForegroundWindow) previous_GetForegroundWindow {nullptr};
 HWND WINAPI hooked_GetForegroundWindow() {
-  static ForegroundOverride override;
-  static LARGE_INTEGER startedAt = [] {
-    LARGE_INTEGER now {};
-    QueryPerformanceCounter(&now);
-    return now;
-  }();
-  static LARGE_INTEGER updateAt = startedAt;
-  static LARGE_INTEGER frequency = [] {
-    LARGE_INTEGER freq {};
-    QueryPerformanceFrequency(&freq);
-    return freq;
-  }();
-  static std::size_t counter {};
-  ++counter;
-  LARGE_INTEGER now {};
-  QueryPerformanceCounter(&now);
-  const auto seconds = (now.QuadPart  - startedAt.QuadPart) / frequency.QuadPart;
-  if (now.QuadPart - updateAt.QuadPart > frequency.QuadPart) {
-    updateAt = now;
-    dprint("GetForegroundWindow called {} times - average of {} per second",
-      counter,
-      counter / seconds);
-  }
-
-  if (const auto value = override.Get()) {
+  if (const auto value = GetOverride()) {
     return value;
   }
   return previous_GetForegroundWindow();
@@ -52,12 +32,26 @@ static_assert(std::same_as<
               decltype(&GetForegroundWindow),
               decltype(&hooked_GetForegroundWindow)>);
 
+decltype(&WindowFromPoint) previous_WindowFromPoint {nullptr};
+HWND WINAPI hooked_WindowFromPoint(const POINT point) {
+  if (const auto value = GetOverride()) {
+    return value;
+  }
+  return previous_WindowFromPoint(point);
+}
+static_assert(
+  std::same_as<decltype(&WindowFromPoint), decltype(&hooked_WindowFromPoint)>);
+
 void InstallHooks() {
   MH_Initialize();
   MH_CreateHook(
     reinterpret_cast<void*>(&GetForegroundWindow),
     reinterpret_cast<void*>(&hooked_GetForegroundWindow),
     reinterpret_cast<void**>(&previous_GetForegroundWindow));
+  MH_CreateHook(
+    reinterpret_cast<void*>(&WindowFromPoint),
+    reinterpret_cast<void*>(&hooked_WindowFromPoint),
+    reinterpret_cast<void**>(&previous_WindowFromPoint));
   MH_EnableHook(MH_ALL_HOOKS);
 }
 
