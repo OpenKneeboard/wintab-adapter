@@ -92,7 +92,7 @@ private:
 }// namespace
 
 struct Args {
-  magic_args::option<bool> mOverwriteDefault {
+  magic_args::flag mOverwriteDefault {
     .help = "Overwrite the current default OTD-IPC v2 implementation, if any",
   };
 };
