@@ -25,7 +25,7 @@ void InjectDll(const uint32_t processId, const std::filesystem::path& dllPath) {
     FALSE,
     processId));
   if ((!process) && GetLastError() == ERROR_ACCESS_DENIED) {
-    throw std::runtime_error("Windows says you don't have permission to hijack the driver process; try running as administrator.");
+    throw std::runtime_error("Windows says you don't have permission to hijack the driver process; try restarting the driver, or running wintab-adapter as administrator.");
   }
   THROW_LAST_ERROR_IF_NULL(process);
 
