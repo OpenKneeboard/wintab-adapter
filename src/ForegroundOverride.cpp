@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 #include "ForegroundOverride.hpp"
 
+#include <stdexcept>
+
 namespace {
 constexpr auto MutexName
   = L"Local\\OTDIPCWintabAdapter.ForegroundOverride.Mutex";
@@ -38,7 +40,7 @@ ForegroundOverride::ForegroundOverride(const Disposition d) {
   if (!readOnly) {
     mLock = mMutex.acquire(nullptr, 1000);
     if (!mLock) {
-      __debugbreak();// TODO: throw runtime error
+      throw std::runtime_error("Failed to acquire foreground window lock");
     }
   }
 
