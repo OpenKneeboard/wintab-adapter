@@ -95,7 +95,7 @@ void InjectDllByExecutableFileName(
   const std::filesystem::path& dllPath) {
   std::string processInfoBuffer(
     sizeof(SYSTEM_PROCESS_INFORMATION) * 1024, '\0');
-  ULONG infoByteCount {processInfoBuffer.size()};
+  ULONG infoByteCount {static_cast<ULONG>(processInfoBuffer.size())};
   while (NtQuerySystemInformation(
            SystemProcessInformation,
            processInfoBuffer.data(),
