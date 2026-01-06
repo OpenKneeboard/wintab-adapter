@@ -90,7 +90,6 @@ void InjectDllByExecutableFileName(
   }
 
   const DWORD processCount = cbNeeded / sizeof(DWORD);
-  bool found = false;
 
   for (DWORD i = 0; i < processCount; ++i) {
     if (pids[i] == 0) continue;
@@ -106,14 +105,11 @@ void InjectDllByExecutableFileName(
       if (GetModuleBaseNameW(hProcess.get(), hMod, szProcessName, MAX_PATH)) {
         if (executableFileName == szProcessName) {
           InjectDll(pids[i], dllPath);
-          found = true;
+          return;
         }
       }
     }
   }
 
-  if (!found) {
-    // TODO: raise error
-    std::println("Target process not found.");
-  }
+  throw std::runtime_error("Could not find target driver process to inject");
 }
