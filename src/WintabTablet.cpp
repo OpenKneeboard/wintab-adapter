@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "WintabTablet.hpp"
+#include "InjectDll.hpp"
 #include <stdexcept>
 #include <thread>
 
@@ -89,7 +90,8 @@ class WintabTablet::LibWintab {
   std::string GetInfoString(UINT wCategory, UINT nIndex) const {
     std::wstring wide;
     wide.resize(this->WTInfoW(wCategory, nIndex, nullptr) / sizeof(wchar_t));
-    const auto actualSize = this->WTInfoW(wCategory, nIndex, wide.data()) / sizeof(wchar_t);
+    const auto actualSize
+      = this->WTInfoW(wCategory, nIndex, wide.data()) / sizeof(wchar_t);
     return to_utf8({wide.data(), actualSize - 1});
   }
 
@@ -98,7 +100,10 @@ class WintabTablet::LibWintab {
 };
 
 WintabTablet::WintabTablet(HWND window, IHandler* handler)
-  : mWindow(window), mHandler(handler), mWintab(new LibWintab()) {
+  : mWindow(window),
+    mHandler(handler),
+    mWintab(new LibWintab()),
+    mForegroundOverride(window) {
   if (gInstance) {
     throw std::runtime_error("Only one WintabTablet at a time!");
   }
@@ -107,6 +112,8 @@ WintabTablet::WintabTablet(HWND window, IHandler* handler)
   }
 
   gInstance = this;
+
+  InjectDllByExecutableFileName(L"HuionTabletCore.exe", absolute(std::filesystem::path{"ForegroundOverrideDll.dll"} ));
 
   ConnectToTablet();
 }
@@ -135,8 +142,7 @@ void WintabTablet::ConnectToTablet() {
   logicalContext.lcPktData = PACKETDATA;
   logicalContext.lcMoveMask = PACKETDATA;
   logicalContext.lcPktMode = PACKETMODE;
-  logicalContext.lcOptions |= CXO_MESSAGES;
-  logicalContext.lcOptions &= ~static_cast<UINT>(CXO_SYSTEM);
+  logicalContext.lcOptions = CXO_MESSAGES;
   logicalContext.lcBtnDnMask = ~0;
   logicalContext.lcBtnUpMask = ~0;
   logicalContext.lcSysMode = false;

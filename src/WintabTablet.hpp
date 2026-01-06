@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
+#include "ForegroundOverride.hpp"
 #include "IHandler.hpp"
 
 #include <Windows.h>
@@ -24,6 +25,7 @@ private:
   class LibWintab;
 
   HWND mWindow { nullptr };
+  ForegroundOverride mForegroundOverride;
   IHandler* mHandler {nullptr };
   std::unique_ptr<LibWintab> mWintab;
   HCTX__* mContext { nullptr };
