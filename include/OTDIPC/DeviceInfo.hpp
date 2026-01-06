@@ -22,10 +22,6 @@ struct DeviceInfo : Header {
   float maxX {};
   float maxY {};
   uint32_t maxPressure {};
-  uint16_t vendorId {};// Deprecated: use persistentId instead. Used to allow
-                       // matching with other data sources
-  uint16_t productId {};// Deprecated: use persistentId instead. Used to allow
-                        // matching with other data sources
 
   char persistentId[PersistentIdMaxLength] {};
   char name[NameMaxLength] {};
