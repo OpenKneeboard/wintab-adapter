@@ -5,7 +5,9 @@
 
 #include <Windows.h>
 #include <psapi.h>
+#include <winternl.h>
 
+#include <ntstatus.h>
 #include <wil/resource.h>
 
 #include <print>
@@ -22,6 +24,9 @@ void InjectDll(const uint32_t processId, const std::filesystem::path& dllPath) {
       | PROCESS_VM_OPERATION | PROCESS_CREATE_THREAD,
     FALSE,
     processId));
+  if ((!process) && GetLastError() == ERROR_ACCESS_DENIED) {
+    throw std::runtime_error("Windows says you don't have permission to hijack the driver process; try running as administrator.");
+  }
   THROW_LAST_ERROR_IF_NULL(process);
 
   // 3. Check if already injected
@@ -72,42 +77,48 @@ void InjectDll(const uint32_t processId, const std::filesystem::path& dllPath) {
   DWORD exitCode {};
   GetExitCodeThread(remoteThread.get(), &exitCode);
 
-  std::println("Injected {} into process {}", dllPath.filename().string(), processId);
+  std::println(
+    "Injected {} into process {}", dllPath.filename().string(), processId);
+}
+
+SYSTEM_PROCESS_INFORMATION* next(SYSTEM_PROCESS_INFORMATION* it) {
+  if (!it->NextEntryOffset) {
+    return nullptr;
+  }
+
+  return reinterpret_cast<SYSTEM_PROCESS_INFORMATION*>(
+    reinterpret_cast<uintptr_t>(it) + it->NextEntryOffset);
 }
 
 void InjectDllByExecutableFileName(
   std::wstring_view executableFileName,
   const std::filesystem::path& dllPath) {
-  std::vector<DWORD> pids(1024);
-  DWORD cbNeeded = 0;
-
-  while (true) {
-    if (!EnumProcesses(pids.data(), static_cast<DWORD>(pids.size() * sizeof(DWORD)), &cbNeeded)) {
-      THROW_LAST_ERROR();
-    }
-    if (cbNeeded < pids.size() * sizeof(DWORD)) break;
-    pids.resize(pids.size() * 2);
+  std::string processInfoBuffer(
+    sizeof(SYSTEM_PROCESS_INFORMATION) * 1024, '\0');
+  ULONG infoByteCount {processInfoBuffer.size()};
+  while (NtQuerySystemInformation(
+           SystemProcessInformation,
+           processInfoBuffer.data(),
+           infoByteCount,
+           &infoByteCount)
+         == STATUS_INFO_LENGTH_MISMATCH) {
+    infoByteCount += sizeof(SYSTEM_PROCESS_INFORMATION) * 32;
+    processInfoBuffer.resize(infoByteCount);
   }
 
-  const DWORD processCount = cbNeeded / sizeof(DWORD);
-
-  for (DWORD i = 0; i < processCount; ++i) {
-    if (pids[i] == 0) continue;
-
-    wil::unique_process_handle hProcess(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, pids[i]));
-    if (!hProcess) continue;
-
-    wchar_t szProcessName[MAX_PATH];
-    HMODULE hMod;
-    DWORD cbModNeeded;
-
-    if (EnumProcessModules(hProcess.get(), &hMod, sizeof(hMod), &cbModNeeded)) {
-      if (GetModuleBaseNameW(hProcess.get(), hMod, szProcessName, MAX_PATH)) {
-        if (executableFileName == szProcessName) {
-          InjectDll(pids[i], dllPath);
-          return;
-        }
-      }
+  for (auto process = reinterpret_cast<SYSTEM_PROCESS_INFORMATION*>(
+         processInfoBuffer.data());
+       process->NextEntryOffset;
+       process = next(process)) {
+    const auto& ntName = process->ImageName;
+    if (!(ntName.Buffer && ntName.Length)) {
+      continue;
+    }
+    const std::wstring_view name { ntName.Buffer, ntName.Length / sizeof(wchar_t) };
+    if (name == executableFileName) {
+      const auto pid = static_cast<DWORD>(std::bit_cast<uintptr_t>(process->UniqueProcessId));
+      InjectDll(pid, dllPath);
+      return;
     }
   }
 

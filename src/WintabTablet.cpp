@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 #include "WintabTablet.hpp"
-#include "InjectDll.hpp"
 #include <stdexcept>
 #include <thread>
+#include "InjectDll.hpp"
+#include "build-config.hpp"
 
 #include <wil/resource.h>
 
@@ -51,6 +52,21 @@ void to_buffer(char (&dest)[N], const std::string_view src) {
   std::ranges::copy_n(src.begin(), std::min(src.size(), N), dest);
 }
 
+template <std::size_t DriverBitness>
+void hijack(const std::wstring_view executableFileName) {
+  constexpr auto ArchBitness = sizeof(void*) * 8;
+  if constexpr (DriverBitness != ArchBitness) {
+    const auto message = std::format(
+      "This driver can only be hijacked by a {}-bit wintab-adapter; this "
+      "version is {}-bit.",
+      DriverBitness,
+      ArchBitness);
+    throw std::runtime_error(message);
+  } else {
+    InjectDllByExecutableFileName(executableFileName, BuildConfig::HijackDllName);
+  }
+}
+
 }// namespace
 
 #define WINTAB_FUNCTIONS \
@@ -87,6 +103,7 @@ class WintabTablet::LibWintab {
   LibWintab& operator=(const LibWintab&) = delete;
   LibWintab& operator=(LibWintab&&) = delete;
 
+  [[nodiscard]]
   std::string GetInfoString(UINT wCategory, UINT nIndex) const {
     std::wstring wide;
     wide.resize(this->WTInfoW(wCategory, nIndex, nullptr) / sizeof(wchar_t));
@@ -99,9 +116,10 @@ class WintabTablet::LibWintab {
   wil::unique_hmodule mWintab = 0;
 };
 
-WintabTablet::WintabTablet(HWND window, IHandler* handler,
-  const std::optional<InjectableBuggyDriver> injectInto
-  )
+WintabTablet::WintabTablet(
+  HWND window,
+  IHandler* handler,
+  const std::optional<InjectableBuggyDriver> injectInto)
   : mWindow(window),
     mHandler(handler),
     mWintab(new LibWintab()),
@@ -117,10 +135,14 @@ WintabTablet::WintabTablet(HWND window, IHandler* handler,
 
   if (injectInto) {
     using enum InjectableBuggyDriver;
-    const auto dll = absolute(std::filesystem::path{"ForegroundOverrideDll.dll"} );
+    const auto dll
+      = absolute(std::filesystem::path {BuildConfig::HijackDllName});
     switch (*injectInto) {
-      case HuionTabletCore:
-        InjectDllByExecutableFileName(L"HuionTabletCore.exe", dll);
+      case Huion:
+        hijack<64>(L"HuionTabletCore.exe");
+        break;
+      case Gaomon:
+        hijack<32>(L"TabletDriver.exe");
         break;
     }
   }
@@ -245,6 +267,7 @@ bool WintabTablet::ProcessMessage(
     gInstance->mHandler->SetState(gInstance->mState);
     return true;
   }
+
   return false;
 }
 

@@ -17,7 +17,8 @@ struct HCTX__;
 class WintabTablet final {
  public:
   enum class InjectableBuggyDriver {
-    HuionTabletCore,
+    Huion,
+    Gaomon,
   };
 
   WintabTablet() = delete;
