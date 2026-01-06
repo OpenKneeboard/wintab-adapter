@@ -118,6 +118,7 @@ void V2Server::PingLoop(const std::stop_token st) {
 }
 
 void V2Server::Stop() {
+  mListenSocket.reset();
   mPingThread = {};
   mAcceptThread = {};
 }
