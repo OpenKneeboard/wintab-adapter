@@ -57,6 +57,7 @@ void hijack(const std::wstring_view executableFileName) {
 
 #define WINTAB_FUNCTIONS \
   IT(WTInfoW) \
+  IT(WTInfoA) \
   IT(WTOpenW) \
   IT(WTClose) \
   IT(WTOverlap) \
@@ -95,8 +96,12 @@ class WintabTablet::LibWintab {
     // however XP-Pen v4.0.12.251015 (latest as of 2026-01-06) crashes if we do
     // that.
 
-    std::wstring buffer(1024, L'\0');
-    const auto byteCount = this->WTInfoW(wCategory, nIndex, buffer.data());
+    // We *also* should be using WTInfoW() instead of WTInfoA(), but XP-Pen
+    // seems to have additional corruption there: with WTInfoA() we get
+    // "Pentablet" with trailing junk, but with WTInfoW() we get "Pentable" then
+    // sometimes the t is replaced with junk.
+    std::string buffer(1024, '\0');
+    const auto byteCount = this->WTInfoA(wCategory, nIndex, buffer.data());
     buffer.resize(byteCount / sizeof(decltype(buffer)::value_type));
 
     // ... it's also required to be null-terminated, but XP-Pen just give us junk
@@ -105,7 +110,7 @@ class WintabTablet::LibWintab {
       buffer.erase(it.base(), buffer.end());
     }
 
-    return to_utf8(buffer);
+    return buffer;
   }
 
  private:
