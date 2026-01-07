@@ -4,6 +4,7 @@
 #include <magic_args/magic_args.hpp>
 #include <magic_enum/magic_enum.hpp>
 
+#include "V1Server.hpp"
 #include "V2Server.hpp"
 #include "WintabTablet.hpp"
 
@@ -88,9 +89,38 @@ class DeviceLogger final : public IHandler {
   IHandler* mNext {nullptr};
 };
 
+class MultiHandler final : public IHandler {
+public:
+  MultiHandler() = delete;
+  ~MultiHandler() = default;
+
+  MultiHandler(std::initializer_list<IHandler*> handlers) : mNext {handlers} {
+  }
+
+  void push_back(IHandler* handler) {
+    mNext.push_back(handler);
+  }
+
+  void SetDevice(const OTDIPC::Messages::DeviceInfo& device) override {
+   for (auto&& handler: mNext) {
+     handler->SetDevice(device);
+   }
+  }
+  void SetState(const OTDIPC::Messages::State& state) override {
+    for (auto&& handler: mNext) {
+     handler->SetState(state);
+    }
+  }
+
+ private:
+  std::vector<IHandler*> mNext;
+
+};
+
 }// namespace
 
 struct Args {
+  bool mOtdIpcV1 {};
   magic_args::flag mOverwriteDefault {
     .help = "Overwrite the current default OTD-IPC v2 implementation, if any",
   };
@@ -112,18 +142,27 @@ MAGIC_ARGS_MAIN(Args&& args) try {
     .socketPath = get_socket_path(),
   };
 
-  auto server = V2Server(
+  auto v2Server = V2Server(
     config,
     args.mOverwriteDefault ? V2Server::DefaultBehavior::AlwaysSet
                            : V2Server::DefaultBehavior::SetIfUnset);
 
-  server.Start();
+  v2Server.Start();
 
-  auto handler = DeviceLogger {&server};
+  MultiHandler servers { &v2Server };
+
+  std::optional<V1Server> v1Server;
+  if (args.mOtdIpcV1) {
+    v1Server.emplace();
+    v1Server->Start();
+    servers.push_back(&*v1Server);
+  }
+
+  auto handler = DeviceLogger {&servers};
 
   const auto window = CreateWintabWindow();
   const auto wintab
-    = new WintabTablet(window.get(), &handler, args.mHijackBuggyDriver);
+    = new WintabTablet(window.get(), &servers, args.mHijackBuggyDriver);
 
   const std::array events {static_cast<HANDLE>(gExitEvent.get())};
   while (true) {

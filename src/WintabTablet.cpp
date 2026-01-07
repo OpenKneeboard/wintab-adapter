@@ -1,6 +1,8 @@
 // Copyright 2025 Fred Emmott <fred@fredemmott.com>
 // SPDX-License-Identifier: MIT
 
+#include "utf8.hpp"
+
 #include "WintabTablet.hpp"
 
 #include <algorithm>
@@ -27,27 +29,6 @@
 namespace {
 WintabTablet* gInstance {nullptr};
 
-std::string to_utf8(const std::wstring_view w) {
-  if (w.empty()) {
-    return {};
-  }
-
-  const auto convert = [w](char* buffer, const std::size_t bufferSize) {
-    return static_cast<std::size_t>(WideCharToMultiByte(
-      CP_UTF8,
-      0,
-      w.data(),
-      static_cast<DWORD>(w.size()),
-      buffer,
-      bufferSize,
-      nullptr,
-      nullptr));
-  };
-  const auto size = convert(nullptr, 0);
-  std::string result;
-  result.resize_and_overwrite(size, convert);
-  return result;
-}
 template <std::size_t N>
 void to_buffer(char (&dest)[N], const std::string_view src) {
   std::ranges::fill(dest, '\0');
@@ -66,8 +47,8 @@ void hijack(const std::wstring_view executableFileName) {
     throw std::runtime_error(message);
   } else {
     const auto name = wil::GetModuleFileNameW(nullptr);
-    const auto hijackDll
-      = std::filesystem::path {name.get()}.parent_path() / BuildConfig::HijackDllName;
+    const auto hijackDll = std::filesystem::path {name.get()}.parent_path()
+      / BuildConfig::HijackDllName;
     InjectDllByExecutableFileName(executableFileName, hijackDll);
   }
 }

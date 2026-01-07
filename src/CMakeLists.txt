@@ -1,3 +1,5 @@
+math(EXPR BUILD_BITS "${CMAKE_SIZEOF_VOID_P} * 8")
+
 # magic_args currently has an implicit dependency on this
 find_package(magic_enum CONFIG REQUIRED)
 find_package(magic_args CONFIG REQUIRED)
@@ -34,9 +36,9 @@ target_link_libraries(
   ForegroundOverride
   PUBLIC
   WIL::WIL
+  PRIVATE
+  generated
 )
-
-math(EXPR BUILD_BITS "${CMAKE_SIZEOF_VOID_P} * 8")
 
 add_library(
   HijackDll
@@ -59,9 +61,11 @@ set_target_properties(
 add_executable(
   main
   main.cpp
+  V1Server.cpp V1Server.hpp
   V2Server.cpp V2Server.hpp
   WintabTablet.cpp WintabTablet.hpp
   InjectDll.cpp InjectDll.hpp
+  utf8.cpp utf8.hpp
 )
 set_target_properties(
   main
