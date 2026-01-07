@@ -1,0 +1,53 @@
+name: Build all
+on: [push, pull_request]
+permissions:
+  packages: write
+jobs:
+  populate-vcpkg-cache:
+    uses: ./.github/workflows/populate-vcpkg-cache.yaml
+    with:
+      arch: ${{matrix.arch}}
+    strategy:
+      matrix:
+        arch: [x86, x64]
+  build:
+    needs: populate-vcpkg-cache
+    strategy:
+      matrix:
+        arch: [ x86, x64 ]
+        kind: [ Debug, RelWithDebInfo ]
+    name: Build - ${{matrix.arch}}-${{ matrix.kind }}
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+        with:
+          submodules: true
+      - uses: ./.github/actions/configure-environment
+        with:
+          arch: ${{matrix.arch}}
+          github_token: ${{secrets.GITHUB_TOKEN}}
+      - name: Configure
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=${{matrix.kind}} `
+            -DVCPKG_TARGET_TRIPLET=${{matrix.arch}}-windows-static `
+            "-DCMAKE_TOOLCHAIN_FILE=third-party/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+            "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$(pwd)/build/output/runtime" `
+            "-DCMAKE_PDB_OUTPUT_DIRECTORY=$(pwd)/build/output/pdb" `
+            -DPROJECT_VERSION_TWEAK=${{github.run_number}} `
+            "-DBUILD_METADATA=gha.${{github.run_number}}"
+      - name: Build
+        run: cmake --build build --config ${{matrix.kind}} --parallel
+      - name: Upload Binaries
+        if: matrix.kind != 'Debug'
+        uses: actions/upload-artifact@v6
+        with:
+          name: wintab-adapter-gha${{github.run_number}}-${{matrix.arch}}
+          path: build/output/runtime/*
+      - name: Upload Symbols
+        if: matrix.kind != 'Debug'
+        uses: actions/upload-artifact@v6
+        with:
+          name: wintab-adapter-gha${{github.run_number}}-${{matrix.arch}}-debug-symbols
+          path: build/output/pdb/*

@@ -4,7 +4,16 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(hybrid-crt)
 include(smol-binaries)
 
-project(wintab-adapter LANGUAGES CXX)
+if (NOT PROJECT_VERSION_TWEAK)
+  set(PROJECT_VERSION_TWEAK 0)
+endif ()
+project(wintab-adapter VERSION 0.0.1.${PROJECT_VERSION_TWEAK} LANGUAGES CXX)
+
+set(BUILD_METADATA "" CACHE STRING "SEMVER build metadata, e.g 'gha.42' => v1.2.3+gha.42")
+set(SEMVER "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+if (BUILD_METADATA)
+  string(APPEND SEMVER "+${BUILD_METADATA}")
+endif ()
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_EXTENSIONS OFF)
