@@ -27,6 +27,7 @@ It is able to work around some bugs in the drivers, but it's not able to add com
 | Wacom v6.4.12    | ✅                   | ❌           | ❌              |
 | Huion v15.7.6    | ❌                   | ❌           | ❌              |
 | Gaomon v14.8.133 | ❌                   | ❌           | ❌              |
+| XP-Pen v14.8.133 | ❌                   | ❌           | ❌              |
 
 ❌: indicates a limitation imposed by the manufacturer's driver, not this adapter.
 
@@ -53,7 +54,7 @@ That said, it's a console application. Once you've built it and a compatible cli
 
 - **Wacom:**
   - Run `wintab-adapter-64.exe`
-  - Administrator *not* required
+  - Administrator is *not* required
   - If your driver has these options, set all pen and expresskey buttons to 'Application Defined'
   - If not, you may want to set them to 'disabled' so you don't accidentally trigger other actions
 - **Huion:**
@@ -64,11 +65,18 @@ That said, it's a console application. Once you've built it and a compatible cli
     - Otherwise, either way works
   - Set the screen mapping to 'All Display'
   - You may want to set pen and button bindings to 'disabled' so you don't accidentally trigger other actions
+  - Turn off rotation
 - **Gaomon:**
   - Run `wintab-adapter-32.exe --hijack-buggy-driver=Gaomon`
   - Administrator *always* required
   - Set the screen mapping to 'All Display'
   - You may want to set pen and button bindings to 'disabled' so you don't accidentally trigger other actions
+  - Turn off rotation
+- **XP-Pen:**
+  - Run `wintab-adapter-32.exe --hijack-buggy-driver=XPPen`
+  - Administrator is *not* required
+  - Set the screen mapping to 'All Monitor' and "Set full screen"
+  - Turn off rotation
 - **All others:**: `wintab-adapter-64.exe` *may* work for you. If not, your options are:
   - Use OpenTabletDriver
   - Contact your manufacturer and ask them to fix their WinTab driver

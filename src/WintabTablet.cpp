@@ -145,6 +145,9 @@ WintabTablet::WintabTablet(
       case Gaomon:
         hijack<32>(L"TabletDriver.exe");
         break;
+      case XPPen:
+        hijack<32>(L"XPPenTablet.exe");
+        break;
     }
   }
 

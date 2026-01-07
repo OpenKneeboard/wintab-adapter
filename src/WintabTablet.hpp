@@ -19,6 +19,7 @@ class WintabTablet final {
   enum class InjectableBuggyDriver {
     Huion,
     Gaomon,
+    XPPen,
   };
 
   WintabTablet() = delete;
