@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 #include "WintabTablet.hpp"
+
+#include <algorithm>
+#include <print>
 #include <stdexcept>
 #include <thread>
 #include "InjectDll.hpp"
@@ -16,8 +19,6 @@
 #define PACKETDATA (PK_X | PK_Y | PK_Z | PK_BUTTONS | PK_NORMAL_PRESSURE | PK_CHANGED)
 #define PACKETMODE 0
 #define PACKETEXPKEYS PKEXT_ABSOLUTE
-#include <algorithm>
-#include <print>
 #include <wintab/PKTDEF.H>
 // clang-format on
 // NOLINTEND(cppcoreguidelines-macro-to-enum)
@@ -63,7 +64,8 @@ void hijack(const std::wstring_view executableFileName) {
       ArchBitness);
     throw std::runtime_error(message);
   } else {
-    InjectDllByExecutableFileName(executableFileName, BuildConfig::HijackDllName);
+    InjectDllByExecutableFileName(
+      executableFileName, BuildConfig::HijackDllName);
   }
 }
 
