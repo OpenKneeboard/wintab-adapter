@@ -120,7 +120,9 @@ public:
 }// namespace
 
 struct Args {
-  bool mOtdIpcV1 {};
+  magic_args::flag mOtdIpcV1 {
+    .help = "Support OTD-IPC v1 clients, e.g. OpenKneeboard v1.x",
+  };
   magic_args::flag mOverwriteDefault {
     .help = "Overwrite the current default OTD-IPC v2 implementation, if any",
   };
