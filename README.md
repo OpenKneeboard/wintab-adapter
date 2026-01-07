@@ -1,10 +1,6 @@
 # wintab-adapter
 
-This creates an OTD-IPC v2 server, backed by wintab (vendor tablet drivers).
-
-It does not work with OpenKneeboard v1.x, as that requires OTD-IPC v1
-
-This is not currently a useful project for anybody.
+This is still in development and not currently a useful project for anybody.
 
 ## What does it do?
 
@@ -16,9 +12,9 @@ It also works around several common driver bugs:
 - Incomplete or buggy support for axis scaling and unit mapping via the `lcOut` fields
 - Missing or buggy support for inverting the Y axis
 
-## What doesn't it do?
+There is opt-in support for OTD-IPC v1, [including OpenKneeboard v1](#using-with-openkneeboard-v1).
 
-It does not support OpenKneeboard v1.x.
+## What doesn't it do?
 
 It is able to work around some bugs in the drivers, but it's not able to add completely missing features.
 
@@ -30,6 +26,8 @@ It is able to work around some bugs in the drivers, but it's not able to add com
 | XP-Pen v14.8.133 | ❌                   | ❌           | ❌              |
 
 ❌: indicates a limitation imposed by the manufacturer's driver, not this adapter.
+
+These versions are the latest as of 2026-01-07
 
 ## I need those features!
 
@@ -80,6 +78,12 @@ That said, it's a console application. Once you've built it and a compatible cli
 - **All others:**: `wintab-adapter-64.exe` *may* work for you. If not, your options are:
   - Use OpenTabletDriver
   - Contact your manufacturer and ask them to fix their WinTab driver
+
+### Using with OpenKneeboard v1
+
+To be compatible with OTD-IPC v1 (including OpenKneeboard v1.x), run with `--otd-ipc-v1` in addition to any other options you need.
+
+It is likely that no buttons will work [due to missing features in vendor drivers](#what-doesnt-it-do), so you will be unable to erase or bind anything, however the pen tip should work.
 
 ## What does `--hijack-buggy-driver` do?
 
