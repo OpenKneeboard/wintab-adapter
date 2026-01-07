@@ -91,11 +91,21 @@ class WintabTablet::LibWintab {
 
   [[nodiscard]]
   std::string GetInfoString(UINT wCategory, UINT nIndex) const {
-    std::wstring wide;
-    wide.resize(this->WTInfoW(wCategory, nIndex, nullptr) / sizeof(wchar_t));
-    const auto actualSize
-      = this->WTInfoW(wCategory, nIndex, wide.data()) / sizeof(wchar_t);
-    return to_utf8({wide.data(), actualSize - 1});
+    // We *should* call WTInfo without a buffer first to get the needed size,
+    // however XP-Pen v4.0.12.251015 (latest as of 2026-01-06) crashes if we do
+    // that.
+
+    std::wstring buffer(1024, L'\0');
+    const auto byteCount = this->WTInfoW(wCategory, nIndex, buffer.data());
+    buffer.resize(byteCount / sizeof(decltype(buffer)::value_type));
+
+    // ... it's also required to be null-terminated, but XP-Pen just give us junk
+    const auto it = std::find_if(buffer.rbegin(), buffer.rend(), [](const auto c) { return c > 32; });
+    if (it != buffer.rend()) {
+      buffer.erase(it.base(), buffer.end());
+    }
+
+    return to_utf8(buffer);
   }
 
  private:
