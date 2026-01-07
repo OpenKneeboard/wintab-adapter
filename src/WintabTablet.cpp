@@ -142,6 +142,9 @@ WintabTablet::WintabTablet(
       case Huion:
         hijack<64>(L"HuionTabletCore.exe");
         break;
+      case HuionAlternate:
+        hijack<64>(L"TabletDriver.exe");
+        break;
       case Gaomon:
         hijack<32>(L"TabletDriver.exe");
         break;

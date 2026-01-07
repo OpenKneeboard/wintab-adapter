@@ -18,6 +18,7 @@ class WintabTablet final {
  public:
   enum class InjectableBuggyDriver {
     Huion,
+    HuionAlternate,
     Gaomon,
     XPPen,
   };

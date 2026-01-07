@@ -18,27 +18,35 @@ There is opt-in support for OTD-IPC v1, [including OpenKneeboard v1](#using-with
 
 It is able to work around some bugs in the drivers, but it's not able to add completely missing features.
 
-| Driver           | Correct tablet area | Pen buttons | Tablet buttons |
-|------------------|---------------------|-------------|----------------|
-| Wacom v6.4.12    | ✅                   | ❌           | ❌              |
-| Huion v15.7.6    | ❌                   | ❌           | ❌              |
-| Gaomon v14.8.133 | ❌                   | ❌           | ❌              |
-| XP-Pen v14.8.133 | ❌                   | ❌           | ❌              |
+| Driver                       | Correct tablet area | Pen buttons | Tablet buttons |
+|------------------------------|---------------------|-------------|----------------|
+| Wacom v6.4.12                | ✅                   | ❌           | ❌              |
+| Huion v15.7.6                | ❌                   | ❌           | ❌              |
+| Huion "3ExpressKey_0Softkey" | ❌                   | 🐛          | ❌              |
+| Gaomon v14.8.133             | ❌                   | ❌           | ❌              |
+| XP-Pen v14.8.133             | ❌                   | ❌           | ❌              |
 
 ❌: indicates a limitation imposed by the manufacturer's driver, not this adapter.
+🐛: indicates the driver provides this feature, but it is unreliable
 
 These versions are the latest as of 2026-01-07
 
+Huion "3ExpressKey_0SoftKey" is a driver published in 2018, and is still the latest available for some tablets such as
+the the Huion H420, a.k.a '420 OSU'.
+
 ## I need those features!
 
-These features are usable with this adapter when they are made available by the hardware driver; only the driver manufacturer can add support for them on your tablet.
+These features are usable with this adapter when they are made available by the hardware driver; only the driver
+manufacturer can add support for them on your tablet.
 
 Your options are:
 
 - Use OpenTabletDriver instead
 - If you have a Wacom tablet which is supported by driver v6.4.5, use that instead; these features are available there.
   Wacom informed me these features were intentionally removed in later versions
-- You can ask your tablet manufacturer to implement [OTD-IPC v2](https://github.com/OpenKneeboard/OTD-IPC/blob/master/docs/protocol.md) so you can use their driver without this adapter
+- You can ask your tablet manufacturer to
+  implement [OTD-IPC v2](https://github.com/OpenKneeboard/OTD-IPC/blob/master/docs/protocol.md) so you can use their
+  driver without this adapter
 - You can ask your tablet manufacturer to add the missing features to their WinTab driver
 
 ## How do I use this?
@@ -51,52 +59,62 @@ Your options are:
 That said, it's a console application. Once you've built it and a compatible client:
 
 - **Wacom:**
-  - Run `wintab-adapter-64.exe`
-  - Administrator is *not* required
-  - If your driver has these options, set all pen and expresskey buttons to 'Application Defined'
-  - If not, you may want to set them to 'disabled' so you don't accidentally trigger other actions
+    - Run `wintab-adapter-64.exe`
+    - Administrator is *not* required
+    - If your driver has these options, set all pen and expresskey buttons to 'Application Defined'
+    - If not, you may want to set them to 'disabled' so you don't accidentally trigger other actions
 - **Huion:**
-  - Run `wintab-adapter-64.exe --hijack-buggy-driver=Huion`
-  - Administrator *sometimes* required:
-    - The Huion driver is inconsistent about whether or not it runs elevated
-    - If the Huion driver is running elevated, you must run `wintab-adapter-64.exe` elevated
-    - Otherwise, either way works
-  - Set the screen mapping to 'All Display'
-  - You may want to set pen and button bindings to 'disabled' so you don't accidentally trigger other actions
-  - Turn off rotation
+    - Try both:
+        - `wintab-adapter-64.exe --hijack-buggy-driver=Huion` (for most tablets)
+        - `wintab-adapter-64.exe --hijack-buggy-driver=HuionAlternate` (for some older models)
+    - Administrator *sometimes* required:
+        - The Huion driver is inconsistent about whether or not it runs elevated
+        - If the Huion driver is running elevated, you must run `wintab-adapter-64.exe` elevated
+        - Otherwise, either way works
+    - Set the screen mapping to 'All Display'
+    - You may want to set pen and button bindings to 'disabled' so you don't accidentally trigger other actions
+        - in some versions of the driver, this is labelled as 'none'
+    - Turn off rotation
 - **Gaomon:**
-  - Run `wintab-adapter-32.exe --hijack-buggy-driver=Gaomon`
-  - Administrator *always* required
-  - Set the screen mapping to 'All Display'
-  - You may want to set pen and button bindings to 'disabled' so you don't accidentally trigger other actions
-  - Turn off rotation
+    - Run `wintab-adapter-32.exe --hijack-buggy-driver=Gaomon`
+    - Administrator *always* required
+    - Set the screen mapping to 'All Display'
+    - You may want to set pen and button bindings to 'disabled' so you don't accidentally trigger other actions
+    - Turn off rotation
 - **XP-Pen:**
-  - Run `wintab-adapter-32.exe --hijack-buggy-driver=XPPen`
-  - Administrator is *not* required
-  - Set the screen mapping to 'All Monitor' and "Set full screen"
-  - Turn off rotation
+    - Run `wintab-adapter-32.exe --hijack-buggy-driver=XPPen`
+    - Administrator is *not* required
+    - Set the screen mapping to 'All Monitor' and "Set full screen"
+    - Turn off rotation
 - **All others:**: `wintab-adapter-64.exe` *may* work for you. If not, your options are:
-  - Use OpenTabletDriver
-  - Contact your manufacturer and ask them to fix their WinTab driver
+    - Use OpenTabletDriver
+    - Contact your manufacturer and ask them to fix their WinTab driver
 
 ### Using with OpenKneeboard v1
 
-To be compatible with OTD-IPC v1 (including OpenKneeboard v1.x), run with `--otd-ipc-v1` in addition to any other options you need.
+To be compatible with OTD-IPC v1 (including OpenKneeboard v1.x), run with `--otd-ipc-v1` in addition to any other
+options you need.
 
-It is likely that no buttons will work [due to missing features in vendor drivers](#what-doesnt-it-do), so you will be unable to erase or bind anything, however the pen tip should work.
+It is likely that no buttons will work [due to missing features in vendor drivers](#what-doesnt-it-do), so you will be
+unable to erase or bind anything, however the pen tip should work.
 
 ## What does `--hijack-buggy-driver` do?
 
-It works around buggy or incomplete implementations of `WTOverlap()` and `WT_OVERLAP`, allowing the adapter to work when it is not the foreground window.
+It works around buggy or incomplete implementations of `WTOverlap()` and `WT_OVERLAP`, allowing the adapter to work when
+it is not the foreground window.
 
 If you're familiar with OpenKneeboard's "invasive" mode, this solves the same problem by doing roughly the opposite:
 
-- 'invasive' mode modifies other programs (e.g. games) so that when they are in the foreground, they load the tablet driver and forward the data to OpenKneeboard
-- `wintab-adapter` instead modifies the driver so that it never realizes that other programs (like the games) are in the foreground
+- 'invasive' mode modifies other programs (e.g. games) so that when they are in the foreground, they load the tablet
+  driver and forward the data to OpenKneeboard
+- `wintab-adapter` instead modifies the driver so that it never realizes that other programs (like the games) are in the
+  foreground
 
-These drivers repeatedly ask Windows what the foreground Window is, and/or the Window under the mouse cursor is. On my system, this happens between 700 and 1500 times per second.
+These drivers repeatedly ask Windows what the foreground Window is, and/or the Window under the mouse cursor is. On my
+system, this happens between 700 and 1500 times per second.
 
-The `--hijack-buggy-driver` option intercepts the following calls so that the driver always thinks that the `wintab-adapter` window is the foreground window:
+The `--hijack-buggy-driver` option intercepts the following calls so that the driver always thinks that the
+`wintab-adapter` window is the foreground window:
 
 - `GetForegroundWindow()`
 - `WindowFromPoint()`
