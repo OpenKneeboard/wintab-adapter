@@ -14,6 +14,10 @@ file(
 namespace BuildConfig {
 
 constexpr auto HijackDllName = \"$<TARGET_FILE_NAME:HijackDll>\";
+constexpr auto MutexName
+  = L\"Local\\\\OTDIPCWintabAdapter${BUILD_BITS}.ForegroundOverride.Mutex\";
+constexpr auto SHMName
+  = L\"Local\\\\OTDIPCWintabAdapter${BUILD_BITS}.ForegroundOverride.HWND\";
 
 }
 "

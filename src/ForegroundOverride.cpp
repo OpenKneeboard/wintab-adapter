@@ -2,14 +2,8 @@
 // SPDX-License-Identifier: MIT
 #include "ForegroundOverride.hpp"
 
+#include <build-config.hpp>
 #include <stdexcept>
-
-namespace {
-constexpr auto MutexName
-  = L"Local\\OTDIPCWintabAdapter.ForegroundOverride.Mutex";
-constexpr auto SHMName
-  = L"Local\\OTDIPCWintabAdapter.ForegroundOverride.HWND";
-}// namespace
 
 ForegroundOverride::ForegroundOverride()
   : ForegroundOverride(Disposition::Read) {
@@ -35,7 +29,7 @@ HWND ForegroundOverride::Get() const {
 ForegroundOverride::ForegroundOverride(const Disposition d) {
   const bool readOnly = (d == Disposition::Read);
 
-  mMutex.reset(CreateMutexW(nullptr, FALSE, MutexName));
+  mMutex.reset(CreateMutexW(nullptr, FALSE, BuildConfig::MutexName));
   THROW_LAST_ERROR_IF_NULL(mMutex);
   if (!readOnly) {
     mLock = mMutex.acquire(nullptr, 1000);
@@ -47,7 +41,12 @@ ForegroundOverride::ForegroundOverride(const Disposition d) {
   // Always use PAGE_READWRITE as if the reader is first, it still
   // needs to be created as a read-write page
   mMapping.reset(CreateFileMappingW(
-    INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(HWND), SHMName));
+    INVALID_HANDLE_VALUE,
+    nullptr,
+    PAGE_READWRITE,
+    0,
+    sizeof(HWND),
+    BuildConfig::SHMName));
   THROW_LAST_ERROR_IF_NULL(mMapping);
   mView = static_cast<HWND*>(MapViewOfFile(
     mMapping.get(),
