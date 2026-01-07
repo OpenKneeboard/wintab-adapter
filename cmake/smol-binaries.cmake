@@ -1,6 +1,5 @@
-# These flags are standard for `Release` binaries, but... no one should use that.
-# Enable them for everything except 'Debug' so that we get them in
-# `RelWithDebInfo` too
+# These flags are standard for `Release` binaries, but we want to distribute
+# 'RelWithDebInfo'
 
 add_link_options(
   "$<$<NOT:$<CONFIG:Debug>>:/INCREMENTAL:NO>"
