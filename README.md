@@ -85,5 +85,10 @@ The `--hijack-buggy-driver` option intercepts the following calls so that the dr
 - `GetForegroundWindow()`
 - `WindowFromPoint()`
 
+This has the advantages that:
+
+- it's simpler
+- anti-cheat is less likely to have issues with it
+- buggy drivers are much less likely to crash other apps (games)
 
 
