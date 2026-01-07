@@ -145,9 +145,10 @@ void V2Server::AcceptOnce(const std::stop_token st) {
 
   // 1. Send DebugMessage (Identity)
   const std::string identity = std::format(
-    "OTD-IPC '{}' : {} / {}",
+    "OTD-IPC '{}' : {} / {} ({})",
     mConfig.humanName,
     mConfig.implementationId,
+    mConfig.debugVersion,
     mConfig.semVer);
   SendDebugMessage(identity);
 
