@@ -28,6 +28,8 @@ It is able to work around some bugs in the drivers, but it's not able to add com
 | Huion v15.7.6    | ❌                   | ❌           | ❌              |
 | Gaomon v14.8.133 | ❌                   | ❌           | ❌              |
 
+❌: indicates a limitation imposed by the manufacturer's driver, not this adapter.
+
 ## I need those features!
 
 These features are usable with this adapter when they are made available by the hardware driver; only the driver manufacturer can add support for them on your tablet.
@@ -67,7 +69,9 @@ That said, it's a console application. Once you've built it and a compatible cli
   - Administrator *always* required
   - Set the screen mapping to 'All Display'
   - You may want to set pen and button bindings to 'disabled' so you don't accidentally trigger other actions
-- **All others:**: `wintab-adapter-64.exe` *may* work for you. If not, you need to use OpenTabletDriver instead
+- **All others:**: `wintab-adapter-64.exe` *may* work for you. If not, your options are:
+  - Use OpenTabletDriver
+  - Contact your manufacturer and ask them to fix their WinTab driver
 
 ## What does `--hijack-buggy-driver` do?
 
