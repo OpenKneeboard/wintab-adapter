@@ -23,6 +23,7 @@ It is able to work around some bugs in the drivers, but it's not able to add com
 | OpenTabletDriver             | ✅                   | ✅           | ✅              |
 
 ❌: indicates a limitation imposed by the manufacturer's driver, not this adapter.
+
 🐛: indicates the driver provides this feature, but it is unreliable
 
 These versions are the latest as of 2026-01-07
