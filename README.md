@@ -86,7 +86,7 @@ That said, you can download the latest version from [releases](https://github.co
 ### Using with OpenKneeboard v1
 
 To be compatible with OTD-IPC v1 (including OpenKneeboard v1.x), run with `--otd-ipc-v1` in addition to any other
-options you need (see above).
+options you need (see above). You will also need to configure OpenKneeboard to use OpenTabletDriver instead of WinTab in Settings -> Input, as this adapter pretends to be OpenTabletDriver.
 
 It is likely that no buttons will work [due to missing features in vendor drivers](#what-doesnt-it-do), so you will be
 unable to erase or bind anything; however, the pen tip should work.
