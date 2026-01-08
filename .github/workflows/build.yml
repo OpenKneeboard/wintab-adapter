@@ -37,7 +37,8 @@ jobs:
             "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$(pwd)/build/output/bin" `
             "-DCMAKE_PDB_OUTPUT_DIRECTORY=$(pwd)/build/output/pdb" `
             -DPROJECT_VERSION_TWEAK=${{github.run_number}} `
-            "-DBUILD_METADATA=gha.${{github.run_number}}"
+            "-DBUILD_METADATA=gha.${{github.run_number}}" `
+            "-DSOURCELINK=https://raw.githubusercontent.com/${{github.repository}}/${{github.sha}}"
       - name: Build
         run: cmake --build build --config ${{matrix.kind}} --parallel
       - name: Upload artifacts

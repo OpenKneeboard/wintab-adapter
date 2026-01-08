@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.25..4.2 FATAL_ERROR)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(hybrid-crt)
 include(smol-binaries)
+include(sourcelink)
 
 if (NOT PROJECT_VERSION_TWEAK)
   set(PROJECT_VERSION_TWEAK 0)
