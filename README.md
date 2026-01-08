@@ -95,10 +95,10 @@ That said, it's a console application. Once you've built it and a compatible cli
 ### Using with OpenKneeboard v1
 
 To be compatible with OTD-IPC v1 (including OpenKneeboard v1.x), run with `--otd-ipc-v1` in addition to any other
-options you need.
+options you need (see above).
 
 It is likely that no buttons will work [due to missing features in vendor drivers](#what-doesnt-it-do), so you will be
-unable to erase or bind anything, however the pen tip should work.
+unable to erase or bind anything; however, the pen tip should work.
 
 ## What does `--hijack-buggy-driver` do?
 
