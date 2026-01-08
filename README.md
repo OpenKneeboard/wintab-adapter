@@ -25,6 +25,7 @@ It is able to work around some bugs in the drivers, but it's not able to add com
 | Huion "3ExpressKey_0Softkey" | ❌                   | 🐛          | ❌              |
 | Gaomon v14.8.133             | ❌                   | ❌           | ❌              |
 | XP-Pen v4.0.12               | ❌                   | ❌           | ❌              |
+| Wacom v6.4.5                 | ✅                   | ✅           | ✅              |
 | OpenTabletDriver             | ✅                   | ✅           | ✅              |
 
 ❌: indicates a limitation imposed by the manufacturer's driver, not this adapter.
@@ -72,7 +73,7 @@ That said, it's a console application. Once you've built it and a compatible cli
         - The Huion driver is inconsistent about whether or not it runs elevated
         - If the Huion driver is running elevated, you must run `wintab-adapter-64.exe` elevated
         - Otherwise, either way works
-    - Set the screen mapping to 'All Display' 
+    - Set the screen mapping to 'All Display'
         - in some versions of the driver, this is labeled as 'All desktop area'
     - You may want to set pen and button bindings to 'disabled' so you don't accidentally trigger other actions
         - in some versions of the driver, this is labeled as 'none'
