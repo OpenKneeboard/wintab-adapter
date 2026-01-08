@@ -28,7 +28,7 @@ It is able to work around some bugs in the drivers, but it's not able to add com
 These versions are the latest as of 2026-01-07
 
 Huion "3ExpressKey_0SoftKey" is a driver published in 2018, and is still the latest available for some tablets such as
-the the Huion H420, a.k.a '420 OSU'.
+the Huion H420, a.k.a. '420 OSU'.
 
 ## I need those features!
 
@@ -59,7 +59,7 @@ That said, you can download the latest version from [releases](https://github.co
         - `wintab-adapter-64.exe --hijack-buggy-driver=Huion` (for most tablets)
         - `wintab-adapter-64.exe --hijack-buggy-driver=HuionAlternate` (for some older models)
     - Administrator *sometimes* required:
-        - The Huion driver is inconsistent about whether or not it runs elevated
+        - The Huion driver is inconsistent about whether it runs elevated
         - If the Huion driver is running elevated, you must run `wintab-adapter-64.exe` elevated
         - Otherwise, either way works
     - Set the screen mapping to 'All Display'
@@ -78,7 +78,7 @@ That said, you can download the latest version from [releases](https://github.co
     - Administrator is *not* required
     - Set the screen mapping to 'All Monitor' and "Set full screen"
     - Turn off rotation
-- **All others:**: Try `wintab-adapter-64.exe` without any options; this will work with any correctly implemetented WinTab driver. If this doesn't work, your options are:
+- **All others:** Try `wintab-adapter-64.exe` without any options; this will work with any correctly implemented WinTab driver. If this doesn't work, your options are:
     - Try all the options above for other manufacturers; many tablet brands are just different names for the same manufacturer
     - Use OpenTabletDriver
     - Contact your manufacturer and ask them to fix their WinTab driver
@@ -86,7 +86,7 @@ That said, you can download the latest version from [releases](https://github.co
 ### Using with OpenKneeboard v1
 
 To be compatible with OTD-IPC v1 (including OpenKneeboard v1.x), run with `--otd-ipc-v1` in addition to any other
-options you need (see above). You will also need to configure OpenKneeboard to use OpenTabletDriver instead of WinTab in Settings -> Input, as this adapter pretends to be OpenTabletDriver.
+options you need (see above). You will also need to configure OpenKneeboard to use OpenTabletDriver instead of WinTab in Settings → Input, as this adapter pretends to be OpenTabletDriver.
 
 It is likely that no buttons will work [due to missing features in vendor drivers](#what-doesnt-it-do), so you will be
 unable to erase or bind anything; however, the pen tip should work.
