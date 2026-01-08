@@ -72,9 +72,10 @@ That said, it's a console application. Once you've built it and a compatible cli
         - The Huion driver is inconsistent about whether or not it runs elevated
         - If the Huion driver is running elevated, you must run `wintab-adapter-64.exe` elevated
         - Otherwise, either way works
-    - Set the screen mapping to 'All Display'
+    - Set the screen mapping to 'All Display' 
+        - in some versions of the driver, this is labeled as 'All desktop area'
     - You may want to set pen and button bindings to 'disabled' so you don't accidentally trigger other actions
-        - in some versions of the driver, this is labelled as 'none'
+        - in some versions of the driver, this is labeled as 'none'
     - Turn off rotation
 - **Gaomon:**
     - Run `wintab-adapter-32.exe --hijack-buggy-driver=Gaomon`
