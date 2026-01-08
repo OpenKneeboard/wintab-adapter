@@ -21,6 +21,8 @@ constexpr auto MutexName
 constexpr auto SHMName
   = L\"Local\\\\OTDIPCWintabAdapter${BUILD_BITS}.ForegroundOverride.HWND\";
 
+constexpr auto SemVer = \"${PROJECT_SEMVER}\";
+
 }
 "
 )

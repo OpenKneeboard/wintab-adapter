@@ -7,6 +7,7 @@
 #include "V1Server.hpp"
 #include "V2Server.hpp"
 #include "WintabTablet.hpp"
+#include "build-config.hpp"
 
 // clang-format off
 #include <Windows.h>
@@ -138,8 +139,8 @@ MAGIC_ARGS_MAIN(Args&& args) try {
   const V2Server::Config config {
     .implementationId = "com.openkneeboard.wintab-adapter",
     .humanName = "OpenKneeboard WinTab Adapter",
-    .semVer = "0.0.1+master",
-    .debugVersion = "v0.1 master",
+    .semVer = BuildConfig::SemVer,
+    .debugVersion = BuildConfig::SemVer,
     .homepageUrl = "https://github.com/OpenKneeboard/wintab-adapter",
     .socketPath = get_socket_path(),
   };
