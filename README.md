@@ -87,7 +87,8 @@ That said, it's a console application. Once you've built it and a compatible cli
     - Administrator is *not* required
     - Set the screen mapping to 'All Monitor' and "Set full screen"
     - Turn off rotation
-- **All others:**: `wintab-adapter-64.exe` *may* work for you. If not, your options are:
+- **All others:**: Try `wintab-adapter-64.exe` without any options; this will work with any correctly implemetented WinTab driver. If this doesn't work, your options are:
+    - Try all the options above for other manufacturers; many tablet brands are just different names for the same manufacturer
     - Use OpenTabletDriver
     - Contact your manufacturer and ask them to fix their WinTab driver
 
