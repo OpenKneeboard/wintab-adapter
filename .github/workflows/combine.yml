@@ -1,0 +1,38 @@
+name: Combine artifacts
+on:
+  workflow_run:
+    workflows: [ "Build all" ]
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: wintab-adapter-gha${{github.event.workflow_run.run_number}}-*
+          path: raw-artifacts
+          run-id: ${{github.event.workflow_run.id}}
+          github-token: ${{secrets.GITHUB_TOKEN}}
+      - name: Organize and Combine
+        run: |
+          for arch in x86 x64; do
+            rsync -av raw-artifacts/wintab-adapter-gha${{github.event.workflow_run.run_number}}-$arch/* combined/
+          done
+      - name: Upload combined binaries
+        uses: actions/upload-artifact@v6
+        with:
+          name: wintab-adapter-gha${{github.event.workflow_run.run_number}}
+          path: combined/bin/*
+      - name: Upload combined debug symbols
+        uses: actions/upload-artifact@v6
+        with:
+          name: wintab-adapter-gha${{github.event.workflow_run.run_number}}-debug-symbols
+          path: combined/pdb/*
