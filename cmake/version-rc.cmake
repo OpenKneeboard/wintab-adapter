@@ -1,0 +1,14 @@
+function(add_version_rc TARGET)
+  get_target_property(TARGET_OUTPUT_NAME "${TARGET}" OUTPUT_NAME)
+  if (NOT TARGET_OUTPUT_NAME)
+    set(TARGET_OUTPUT_NAME "${TARGET}")
+  endif ()
+
+  set(INPUT "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/version.rc")
+  set(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_OUTPUT_NAME}-version.rc")
+
+  file(READ "${INPUT}" TEMPLATE_CONTENT)
+  string(CONFIGURE "${TEMPLATE_CONTENT}" CONFIGURED_CONTENT @ONLY)
+  file(GENERATE OUTPUT "${OUTPUT}" CONTENT "${CONFIGURED_CONTENT}")
+  target_sources("${TARGET}" PRIVATE "${OUTPUT}")
+endfunction()

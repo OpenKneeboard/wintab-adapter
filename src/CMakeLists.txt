@@ -29,6 +29,8 @@ constexpr auto SemVer = \"${PROJECT_SEMVER}\";
 add_library(generated INTERFACE)
 target_include_directories(generated INTERFACE "${CODEGEN_INCLUDE_DIR}")
 
+include(version-rc)
+
 add_library(
   ForegroundOverride
   OBJECT
@@ -59,6 +61,7 @@ set_target_properties(
   PROPERTIES
   OUTPUT_NAME "foreground-override-${BUILD_BITS}"
 )
+add_version_rc(HijackDll)
 
 add_executable(
   main
@@ -74,6 +77,7 @@ set_target_properties(
   PROPERTIES
   OUTPUT_NAME "wintab-adapter-${BUILD_BITS}"
 )
+add_version_rc(main)
 
 target_link_libraries(
   main
