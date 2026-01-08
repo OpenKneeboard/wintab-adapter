@@ -10,7 +10,7 @@ It also works around several common driver bugs:
 
 - Broken or missing support for non-foreground windows via `WTOverlap()` and `WT_OVERLAP`
 - Incomplete or buggy support for axis scaling and unit mapping via the `lcOut` fields
-- Missing or buggy support for inverting the Y axis
+- Missing or buggy support for setting the Y axis orientation
 
 There is opt-in support for OTD-IPC v1, [including OpenKneeboard v1](#using-with-openkneeboard-v1).
 
