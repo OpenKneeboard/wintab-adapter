@@ -24,7 +24,7 @@ It is able to work around some bugs in the drivers, but it's not able to add com
 | Huion v15.7.6                | ❌                   | ❌           | ❌              |
 | Huion "3ExpressKey_0Softkey" | ❌                   | 🐛          | ❌              |
 | Gaomon v14.8.133             | ❌                   | ❌           | ❌              |
-| XP-Pen v14.8.133             | ❌                   | ❌           | ❌              |
+| XP-Pen v4.0.12               | ❌                   | ❌           | ❌              |
 | OpenTabletDriver             | ✅                   | ✅           | ✅              |
 
 ❌: indicates a limitation imposed by the manufacturer's driver, not this adapter.
