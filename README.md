@@ -1,18 +1,12 @@
 # wintab-adapter
 
-This is still in development and not currently a useful project for anybody.
-
-## What does it do?
-
-It makes WinTab drivers usable from OTD-IPC v2 applications, such as future versions of OpenKneeboard.
+This makes WinTab drivers usable from OTD-IPC v2 applications, such as future versions of OpenKneeboard. There is opt-in support for OTD-IPC v1, [including OpenKneeboard v1](#using-with-openkneeboard-v1).
 
 It also works around several common driver bugs:
 
-- Broken or missing support for non-foreground windows via `WTOverlap()` and `WT_OVERLAP`
+- Broken or missing support for non-foreground windows (`WTOverlap()` and `WT_OVERLAP`)
 - Incomplete or buggy support for axis scaling and unit mapping via the `lcOut` fields
 - Missing or buggy support for setting the Y axis orientation
-
-There is opt-in support for OTD-IPC v1, [including OpenKneeboard v1](#using-with-openkneeboard-v1).
 
 ## What doesn't it do?
 
@@ -43,7 +37,7 @@ manufacturer can add support for them on your tablet.
 
 Your options are:
 
-- Use OpenTabletDriver instead - *strongly* recommended
+- Use OpenTabletDriver instead; *strongly* recommended
 - Try older versions of your manufacturer's driver
   - For Wacom specifically, if your tablet is supported by v6.4.5, use that instead; Wacom informed me that WinTab control of buttons was intentionally removed in later versions
 - You can ask your tablet manufacturer to implement [OTD-IPC v2](https://github.com/OpenKneeboard/OTD-IPC/blob/master/docs/protocol.md) so you can use their driver without this adapter
@@ -51,12 +45,9 @@ Your options are:
 
 ## How do I use this?
 
-**DON'T.**
+**DON'T.**; use OpenTabletDriver instead if at all possible.
 
-- still in development, and not suitable for use by *ANYONE*
-- OpenTabletDriver is *much* better than any vendor driver I'm aware of
-
-That said, it's a console application. Once you've built it and a compatible client:
+That said, you can download the latest version from [releases](https://github.com/OpenKneeboard/wintab-adapter/releases/latest) (you don't need the debug symbols), then:
 
 - **Wacom:**
     - Run `wintab-adapter-64.exe`
