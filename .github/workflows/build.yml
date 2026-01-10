@@ -41,6 +41,13 @@ jobs:
             "-DSOURCELINK=https://raw.githubusercontent.com/${{github.repository}}/${{github.sha}}"
       - name: Build
         run: cmake --build build --config ${{matrix.kind}} --parallel
+      - name: Make copyright notice file
+        shell: pwsh
+        run: |
+          .github/workflows/make-copyright-notices-file.ps1 `
+            -OutputFile build/output/bin/copyright-notices.txt `
+            -Arch ${{matrix.arch}} `
+            -BuildDir build
       - name: Upload artifacts
         if: matrix.kind != 'Debug'
         uses: actions/upload-artifact@v6
