@@ -118,5 +118,4 @@ This has the advantages that:
 - it's simpler
 - anti-cheat is less likely to have issues with it
 - buggy drivers are much less likely to crash other apps (games)
-
-
+- If the game is running as administrator, this is *more likely* to work. OpenKneeboard remains untested with this configuration, and no help is available
