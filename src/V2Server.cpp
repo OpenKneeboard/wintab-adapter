@@ -3,6 +3,7 @@
 #include "V2Server.hpp"
 
 #include <afunix.h>
+#include <expected>
 #include <shlobj.h>
 #include <wil/filesystem.h>
 #include <wil/result.h>
@@ -13,6 +14,8 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <print>
+#include <variant>
 
 #include <OTDIPC/DebugMessage.hpp>
 #include <OTDIPC/Ping.hpp>
@@ -37,6 +40,33 @@ void InitHeader(T& msg, uint32_t tabletId, std::size_t size = sizeof(T)) {
   msg.size = static_cast<uint32_t>(size);
   msg.nonPersistentTabletId = tabletId;
 }
+
+struct socket_closed_t {};
+struct wsa_error_t { int value {}; };
+inline constexpr socket_closed_t socket_closed;
+
+std::expected<void, std::variant<socket_closed_t, wsa_error_t>>
+ReadNBytes(SOCKET socket, void* const buffer, const std::size_t count) {
+  auto p = buffer;
+  auto toRead = count;
+  while (toRead > 0) {
+    const int result
+      = recv(socket, static_cast<char*>(p), static_cast<int>(toRead), 0);
+    if (result == 0) {
+      return std::unexpected {socket_closed};
+    }
+    if (result == SOCKET_ERROR) {
+      const auto error = WSAGetLastError();
+      if (error == WSAECONNRESET) {
+        return std::unexpected {socket_closed};
+      }
+      return std::unexpected {wsa_error_t { error }};
+    }
+    toRead -= result;
+  }
+  return {};
+}
+
 }// namespace
 
 V2Server::V2Server(Config config, const DefaultBehavior defaultBehavior)
@@ -164,15 +194,53 @@ void V2Server::AcceptOnce(const std::stop_token st) {
   // send anything, so any read > 0 is weird (protocol violation), and read == 0
   // means disconnect.
 
-  char buffer[1];
+  std::vector<std::byte> buffer;
+  buffer.resize(1024);
   while (!st.stop_requested()) {
-    int result = recv(mClientSocket.get(), buffer, 1, 0);
-    if (result <= 0) {
-      // 0 = Graceful disconnect, -1 = Error
-      break;
+    struct ReadErrorVisitor {
+      static void operator()(socket_closed_t) {
+        std::println("Client has disconnected");
+      }
+      static void operator()(const wsa_error_t error) {
+        std::println(
+          stderr,
+          "Reading from client failed with {:#010x}",
+          static_cast<uint32_t>(HRESULT_FROM_WIN32(error.value)));
+      }
+    };
+
+    auto it = buffer.data();
+    auto header = reinterpret_cast<OTDIPC::Messages::Header*>(buffer.data());
+    if (const auto ok = ReadNBytes(mClientSocket.get(), it, sizeof(*header));
+        !ok) {
+      std::visit(ReadErrorVisitor {}, ok.error());
+      return;
     }
-    // If client sends data, we ignore it per protocol, but keep reading to
-    // detect disconnect.
+
+    if (header->size > buffer.size()) {
+      buffer.resize(header->size);
+      header = reinterpret_cast<OTDIPC::Messages::Header*>(buffer.data());
+      it = buffer.data();
+    }
+    it += sizeof(*header);
+
+    if (const auto ok
+        = ReadNBytes(mClientSocket.get(), it, header->size - sizeof(*header));
+        !ok) {
+      std::visit(ReadErrorVisitor {}, ok.error());
+      return;
+    }
+
+    if (header->messageType == OTDIPC::Messages::DebugMessage::MESSAGE_TYPE) {
+      std::println(
+        "Client message: {}",
+        reinterpret_cast<OTDIPC::Messages::DebugMessage*>(header)->message());
+    } else {
+      std::println(
+        stderr,
+        "Received unexpected client message type {}",
+        std::to_underlying(header->messageType));
+    }
   }
   mClientSocket.reset();
 }
@@ -255,7 +323,9 @@ void V2Server::SendDebugMessage(std::string_view message) {
 
   std::vector<char> buffer(totalSize);
   InitHeader(
-    *reinterpret_cast<OTDIPC::Messages::DebugMessage*>(buffer.data()), 0, totalSize);
+    *reinterpret_cast<OTDIPC::Messages::DebugMessage*>(buffer.data()),
+    0,
+    totalSize);
 
   // Copy string data immediately after header
   std::memcpy(
