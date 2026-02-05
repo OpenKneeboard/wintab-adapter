@@ -18,11 +18,21 @@
 #include <variant>
 
 #include <OTDIPC/DebugMessage.hpp>
+#include <OTDIPC/Hello.hpp>
 #include <OTDIPC/Ping.hpp>
 
 #pragma comment(lib, "ws2_32.lib")
 
 namespace {
+
+constexpr uint64_t ProtocolVersion = 0x02'20260205'01;
+constexpr uint8_t CompatibilityVersion = 1;
+
+template<std::size_t N>
+std::string_view TruncateNulls(const char (&in)[N]) {
+  return std::string_view(in, strnlen(in, N));
+}
+
 // Helper to get LocalAppData/otd-ipc/servers/v2
 std::filesystem::path GetDiscoveryDir() {
   wil::unique_cotaskmem_string localAppData;
@@ -42,7 +52,9 @@ void InitHeader(T& msg, uint32_t tabletId, std::size_t size = sizeof(T)) {
 }
 
 struct socket_closed_t {};
-struct wsa_error_t { int value {}; };
+struct wsa_error_t {
+  int value {};
+};
 inline constexpr socket_closed_t socket_closed;
 
 std::expected<void, std::variant<socket_closed_t, wsa_error_t>>
@@ -60,11 +72,17 @@ ReadNBytes(SOCKET socket, void* const buffer, const std::size_t count) {
       if (error == WSAECONNRESET) {
         return std::unexpected {socket_closed};
       }
-      return std::unexpected {wsa_error_t { error }};
+      return std::unexpected {wsa_error_t {error}};
     }
     toRead -= result;
   }
   return {};
+}
+
+template <std::size_t N>
+void CopyTo(char (&dest)[N], const std::string_view src) {
+  std::ranges::fill(dest, '\0');
+  std::ranges::copy_n(src.begin(), std::min(src.size(), N), dest);
 }
 
 }// namespace
@@ -173,26 +191,20 @@ void V2Server::AcceptOnce(const std::stop_token st) {
 
   // HANDSHAKE PHASE
 
-  // 1. Send DebugMessage (Identity)
-  const std::string identity = std::format(
-    "OTD-IPC '{}' : {} / {} ({})",
-    mConfig.humanName,
-    mConfig.implementationId,
-    mConfig.debugVersion,
-    mConfig.semVer);
-  SendDebugMessage(identity);
+  OTDIPC::Messages::Hello hello {
+    .protocolVersion = ProtocolVersion,
+    .compatibilityVersion = CompatibilityVersion,
+  };
+  CopyTo(hello.humanReadableName, mConfig.humanName);
+  CopyTo(hello.humanReadableVersion, mConfig.humanVersion);
+  CopyTo(hello.implementationID, mConfig.implementationId);
+  SendRaw(&hello.header, sizeof(hello));
 
-  // 2. Send DeviceInfo if present
   if (mDevice.has_value()) {
     Send(*mDevice);
   }
 
   // OPERATIONAL PHASE
-  // The server mostly PUSHES. We don't necessarily need to read from the
-  // client, but we should detect disconnects. We can block on a recv() here to
-  // detect when the client closes the connection. The client isn't expected to
-  // send anything, so any read > 0 is weird (protocol violation), and read == 0
-  // means disconnect.
 
   std::vector<std::byte> buffer;
   buffer.resize(1024);
@@ -235,12 +247,24 @@ void V2Server::AcceptOnce(const std::stop_token st) {
       std::println(
         "Client message: {}",
         reinterpret_cast<OTDIPC::Messages::DebugMessage*>(header)->message());
-    } else {
-      std::println(
-        stderr,
-        "Received unexpected client message type {}",
-        std::to_underlying(header->messageType));
+      continue;
     }
+
+    if (header->messageType == OTDIPC::Messages::Hello::MESSAGE_TYPE) {
+      const auto& hello = *reinterpret_cast<OTDIPC::Messages::Hello*>(header);
+      std::println("Client hello: {} {} (proto {:#x}, ID '{}'/ cv {})",
+          TruncateNulls(hello.humanReadableName),
+          TruncateNulls(hello.humanReadableVersion),
+          hello.protocolVersion,
+          TruncateNulls(hello.implementationID),
+          hello.compatibilityVersion);
+      continue;
+    }
+
+    std::println(
+      stderr,
+      "Received unexpected client message type {}",
+      std::to_underlying(header->messageType));
   }
   mClientSocket.reset();
 }
@@ -257,11 +281,11 @@ void V2Server::PublishDiscovery() {
   std::string socketPathGeneric = absolute(mConfig.socketPath).generic_string();
 
   meta << "ID=" << mConfig.implementationId << "\n";
-  meta << "NAME=" << mConfig.humanName << "\n";
-  meta << "SEMVER=" << mConfig.semVer << "\n";
-  meta << "DEBUG_VERSION=" << mConfig.debugVersion << "\n";
-  meta << "HOMEPAGE=" << mConfig.homepageUrl << "\n";
   meta << "SOCKET=" << socketPathGeneric << "\n";
+  meta << "HUMAN_READABLE_NAME=" << mConfig.humanName << "\n";
+  meta << "HUMAN_READABLE_VERSION=" << mConfig.humanVersion << "\n";
+  meta << "COMPATIBILITY_VERSION=" << CompatibilityVersion << "\n";
+  meta << "HOMEPAGE=" << mConfig.homepageUrl << "\n";
   meta.close();
 
   // 2. Handle Default

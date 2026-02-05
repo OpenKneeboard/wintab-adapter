@@ -139,8 +139,7 @@ MAGIC_ARGS_MAIN(Args&& args) try {
   const V2Server::Config config {
     .implementationId = "com.openkneeboard.wintab-adapter",
     .humanName = "OpenKneeboard WinTab Adapter",
-    .semVer = BuildConfig::SemVer,
-    .debugVersion = BuildConfig::SemVer,
+    .humanVersion = BuildConfig::SemVer,
     .homepageUrl = "https://github.com/OpenKneeboard/wintab-adapter",
     .socketPath = get_socket_path(),
   };
@@ -164,12 +163,11 @@ MAGIC_ARGS_MAIN(Args&& args) try {
   auto handler = DeviceLogger {&servers};
 
   const auto window = CreateWintabWindow();
-  const auto wintab
-    = new WintabTablet(window.get(), &servers, args.mHijackBuggyDriver);
+  const auto wintab = std::make_unique<WintabTablet>(window.get(), &servers, args.mHijackBuggyDriver);
 
   const std::array events {static_cast<HANDLE>(gExitEvent.get())};
   while (true) {
-    const auto InputResult = WAIT_OBJECT_0 + events.size();
+    constexpr auto InputResult = WAIT_OBJECT_0 + events.size();
     const auto result = MsgWaitForMultipleObjectsEx(
       static_cast<DWORD>(events.size()),
       events.data(),

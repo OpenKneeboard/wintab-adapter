@@ -25,8 +25,7 @@ class V2Server final : public IHandler {
   struct Config {
     std::string implementationId;// e.g. "com.example.driver"
     std::string humanName;// e.g. "My Custom Driver"
-    std::string semVer;// e.g. "1.0.0"
-    std::string debugVersion;// e.g. "v1.0.0 (Build 42)"
+    std::string humanVersion;// e.g. "v1.0.0 (Build 42)"
     std::string homepageUrl;// e.g. "https://example.com"
     std::filesystem::path socketPath;// Absolute path for the socket
   };
